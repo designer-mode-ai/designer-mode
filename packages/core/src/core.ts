@@ -23,6 +23,11 @@ export class DesignerModeCore {
     this.overlay = new OverlayController(this.adapter);
     this.panel = new PanelController(this.relay, {
       onClose: () => this.setActive(false),
+      onUnlock: () => {
+        this.overlay.unlock();
+        this.selectedEl = null;
+        this.panel.showCompact();
+      },
     });
     this.boundKeyDown = this.handleKeyDown.bind(this);
   }

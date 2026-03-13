@@ -171,28 +171,23 @@ const PANEL_CSS = css`
 
   /* Spacing editor */
   .spacing-editor { margin: 4px 0; }
-  .spacing-label { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-  .spacing-cross {
-    display: grid;
-    grid-template-areas:
-      ".    top    ."
-      "left center right"
-      ".    bottom .";
-    grid-template-columns: 1fr 40px 1fr;
-    grid-template-rows: auto auto auto;
-    gap: 2px; align-items: center; justify-items: center;
+  .spacing-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 4px; font-family: ${F}; }
+  .spacing-cross-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 4px 8px; background: ${C.input}; border-radius: 6px;
+    border: 1px solid ${C.divider};
   }
-  .spacing-cross .sc-top { grid-area: top; }
-  .spacing-cross .sc-right { grid-area: right; }
-  .spacing-cross .sc-bottom { grid-area: bottom; }
-  .spacing-cross .sc-left { grid-area: left; }
-  .spacing-cross .sc-center { grid-area: center; width: 36px; height: 24px; border-radius: 3px; }
+  .spacing-mid-row {
+    display: flex; align-items: center; gap: 4px; width: 100%; justify-content: center;
+  }
+  .spacing-cross-wrap .sc-center { width: 36px; height: 18px; border-radius: 3px; flex-shrink: 0; }
   .mini-input {
-    width: 40px; text-align: center; background: ${C.input}; color: ${C.text};
+    width: 40px; text-align: center; background: transparent; color: ${C.text};
     border: 1px solid transparent; border-radius: 3px; padding: 2px 2px;
     font-size: 10px; font-family: ${M}; outline: none; cursor: pointer;
+    transition: border-color 0.1s, background-color 0.1s;
   }
-  .mini-input:hover { border-color: ${C.divider}; }
+  .mini-input:hover { border-color: ${C.divider}; background: ${C.inputHover}; }
   .mini-input:focus { border-color: ${C.inputFocus}; background: ${C.input}; }
 
   /* Pill list */
@@ -786,27 +781,38 @@ export class PanelController {
     lbl.textContent = label;
     wrap.appendChild(lbl);
 
-    const cross = document.createElement('div');
-    cross.className = 'spacing-cross';
+    const crossWrap = document.createElement('div');
+    crossWrap.className = 'spacing-cross-wrap';
 
-    const positions = ['sc-top', 'sc-right', 'sc-bottom', 'sc-left'];
-    for (let i = 0; i < 4; i++) {
+    const makeInput = (idx: number) => {
       const input = document.createElement('input');
-      input.className = `mini-input ${positions[i]}`;
-      input.value = shortenValue(this.getVal(props[i])) || '0';
+      input.className = 'mini-input';
+      input.value = shortenValue(this.getVal(props[idx])) || '0';
       input.style.color = color;
-      this.setupMiniInput(input, props[i], color);
-      cross.appendChild(input);
-    }
+      this.setupMiniInput(input, props[idx], color);
+      return input;
+    };
 
-    // Center rectangle
+    // Top
+    crossWrap.appendChild(makeInput(0));
+
+    // Middle row: left - center - right
+    const midRow = document.createElement('div');
+    midRow.className = 'spacing-mid-row';
+    midRow.appendChild(makeInput(3)); // left
     const center = document.createElement('div');
     center.className = 'sc-center';
     center.style.background = bgColor;
-    center.style.border = `1px solid ${color}`;
-    cross.appendChild(center);
+    center.style.opacity = '0.15';
+    center.style.backgroundColor = color;
+    midRow.appendChild(center);
+    midRow.appendChild(makeInput(1)); // right
+    crossWrap.appendChild(midRow);
 
-    wrap.appendChild(cross);
+    // Bottom
+    crossWrap.appendChild(makeInput(2));
+
+    wrap.appendChild(crossWrap);
     return wrap;
   }
 
