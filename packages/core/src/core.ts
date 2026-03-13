@@ -49,6 +49,11 @@ export class DesignerModeCore {
       this.panel.show(info, el);
     });
 
+    this.overlay.setOnHover((info, el) => {
+      if (!info || !el) { this.panel.hideHover(); return; }
+      this.panel.showHover(info, el);
+    });
+
     document.addEventListener('keydown', this.boundKeyDown, true);
 
     if (this.options.persistState) {
