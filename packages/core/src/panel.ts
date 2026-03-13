@@ -349,8 +349,8 @@ export class PanelController {
     style.textContent = PANEL_CSS;
     this.shadow.appendChild(style);
 
-    // Position above the toggle button (bottom: 76px, right: 16px)
-    this.pos = { x: 0, y: 76 }; // x=right offset, y=bottom offset
+    // Align bottom edge with toggle button (bottom: 20px, right: 20px)
+    this.pos = { x: 20, y: 20 }; // x=right offset, y=bottom offset
     this.render();
     container.appendChild(this.host);
 
@@ -362,6 +362,14 @@ export class PanelController {
 
     this.checkHealth();
     this.healthInterval = setInterval(() => this.checkHealth(), 10000);
+  }
+
+  showCompact() {
+    this.info = null;
+    this.selectedEl = null;
+    this.isLocked = false;
+    this.isVisible = true;
+    this.render();
   }
 
   show(info: ComponentInfo, el: HTMLElement) {
@@ -392,7 +400,7 @@ export class PanelController {
     if (this.isLocked) return; // don't hide locked panel on mouse leave
     this.info = null;
     this.selectedEl = null;
-    this.isVisible = false;
+    // Keep panel visible in compact mode (no info, but still showing)
     this.render();
   }
 

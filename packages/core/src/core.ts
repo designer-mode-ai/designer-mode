@@ -75,8 +75,13 @@ export class DesignerModeCore {
 
   setActive(active: boolean) {
     this.isActive = active;
-    if (active) { this.overlay.activate(); }
-    else { this.overlay.deactivate(); this.panel.hide(); }
+    if (active) {
+      this.overlay.activate();
+      this.panel.showCompact();
+    } else {
+      this.overlay.deactivate();
+      this.panel.hide();
+    }
     this.toggleCtrl?.setActive(active);
     if (this.options.persistState) {
       localStorage.setItem('designer-mode-active', String(active));
