@@ -143,11 +143,23 @@ importers:
         specifier: ^5.4.0
         version: 5.9.3
 
-  packages/inspector-angular: {}
+  packages/inspector-angular:
+    dependencies:
+      '@designer-mode/core':
+        specifier: workspace:*
+        version: link:../core
 
-  packages/inspector-react: {}
+  packages/inspector-react:
+    dependencies:
+      '@designer-mode/core':
+        specifier: workspace:*
+        version: link:../core
 
-  packages/inspector-svelte: {}
+  packages/inspector-svelte:
+    dependencies:
+      '@designer-mode/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/inspector-vanilla:
     dependencies:
@@ -155,7 +167,11 @@ importers:
         specifier: workspace:*
         version: link:../core
 
-  packages/inspector-vue: {}
+  packages/inspector-vue:
+    dependencies:
+      '@designer-mode/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/rn: {}
 

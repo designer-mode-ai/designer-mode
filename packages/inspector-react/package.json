@@ -7,8 +7,8 @@
     ".": "./src/index.js",
     "./component": "./src/DesignerMode.jsx"
   },
+  "dependencies": { "@designer-mode/core": "workspace:*" },
   "peerDependencies": {
-    "@designer-mode/core": "workspace:*",
     "react": ">=17.0.0",
     "react-dom": ">=17.0.0"
   }

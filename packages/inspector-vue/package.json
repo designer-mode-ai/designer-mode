@@ -4,5 +4,6 @@
   "type": "module",
   "main": "./src/index.js",
   "exports": { ".": "./src/index.js" },
-  "peerDependencies": { "@designer-mode/core": "workspace:*", "vue": ">=3.0.0" }
+  "dependencies": { "@designer-mode/core": "workspace:*" },
+  "peerDependencies": { "vue": ">=3.0.0" }
 }

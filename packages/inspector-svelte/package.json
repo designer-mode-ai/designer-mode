@@ -7,5 +7,6 @@
     ".": "./src/index.js",
     "./preprocessor": "./src/preprocessor.js"
   },
-  "peerDependencies": { "@designer-mode/core": "workspace:*", "svelte": ">=4.0.0" }
+  "dependencies": { "@designer-mode/core": "workspace:*" },
+  "peerDependencies": { "svelte": ">=4.0.0" }
 }
