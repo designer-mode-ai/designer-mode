@@ -414,7 +414,8 @@ export class PanelController {
     this.render();
   }
 
-  applyEdit(property: string, newValue: string, el: HTMLElement) {
+  /** Record an edit and apply the style, but don't re-render the panel */
+  private recordEdit(property: string, newValue: string, el: HTMLElement) {
     const original = this.originalSnapshot[property] ?? '';
     if (newValue === original) {
       this.editLog.delete(property);
@@ -431,6 +432,11 @@ export class PanelController {
       const camel = property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
       (el.style as any)[camel] = newValue;
     }
+  }
+
+  /** Record an edit, apply the style, and re-render the panel */
+  applyEdit(property: string, newValue: string, el: HTMLElement) {
+    this.recordEdit(property, newValue, el);
     this.render();
   }
 
@@ -689,7 +695,7 @@ export class PanelController {
       ta.rows = 2;
       ta.oninput = () => {
         if (this.selectedEl) {
-          this.applyEdit('__textContent', ta.value, this.selectedEl);
+          this.recordEdit('__textContent', ta.value, this.selectedEl);
           // update text in DOM
           const textNodes = Array.from(this.selectedEl.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
           if (textNodes.length > 0) textNodes[0].textContent = ta.value;
@@ -796,10 +802,11 @@ export class PanelController {
 
   private setupMiniInput(input: HTMLInputElement, prop: string, _color: string) {
     let editing = false;
-    input.onfocus = () => { editing = true; input.select(); };
+    let startValue = '';
+    input.onfocus = () => { editing = true; startValue = input.value; input.select(); };
     input.onblur = () => {
       editing = false;
-      if (this.selectedEl) {
+      if (this.selectedEl && input.value !== startValue) {
         const val = input.value.trim();
         const withUnit = /^\d+$/u.test(val) ? val + 'px' : val;
         this.applyEdit(prop, withUnit, this.selectedEl);
@@ -814,7 +821,7 @@ export class PanelController {
         const num = parseFloat(input.value) || 0;
         input.value = String(num + delta);
         if (this.selectedEl) {
-          this.applyEdit(prop, input.value + 'px', this.selectedEl);
+          this.recordEdit(prop, input.value + 'px', this.selectedEl);
         }
       }
     };
@@ -1203,7 +1210,7 @@ export class PanelController {
       colorInput.value = toHexColor(value);
       colorInput.oninput = () => {
         swatch.style.background = colorInput.value;
-        if (this.selectedEl) this.applyEdit(prop, colorInput.value, this.selectedEl);
+        if (this.selectedEl) this.recordEdit(prop, colorInput.value, this.selectedEl);
       };
 
       swatch.onclick = (e) => { e.stopPropagation(); colorInput.click(); };
@@ -1236,19 +1243,19 @@ export class PanelController {
           const m = input.value.match(/^(-?\d*\.?\d+)(.*)/u);
           if (m) {
             input.value = `${parseFloat(m[1]) + delta}${m[2]}`;
-            if (this.selectedEl) this.applyEdit(prop, input.value, this.selectedEl);
+            if (this.selectedEl) this.recordEdit(prop, input.value, this.selectedEl);
           }
         }
       };
       // Live apply on keystrokes
       input.oninput = () => {
-        if (this.selectedEl) this.applyEdit(prop, input.value, this.selectedEl);
+        if (this.selectedEl) this.recordEdit(prop, input.value, this.selectedEl);
       };
       input.onblur = () => {
         const newVal = input.value;
         const newWrap = this.makeEditableValue(prop, newVal, isColor);
         input.replaceWith(newWrap);
-        if (this.selectedEl) this.applyEdit(prop, newVal, this.selectedEl);
+        if (this.selectedEl && newVal !== original) this.applyEdit(prop, newVal, this.selectedEl);
       };
     };
 
