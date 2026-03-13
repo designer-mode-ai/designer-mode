@@ -62,8 +62,8 @@ const PANEL_CSS = css`
     color: ${C.text}; z-index: 2147483645; overflow: hidden; user-select: none;
     transition: max-height 0.2s ease;
   }
-  .panel.hover-mode { max-height: 280px; }
-  .panel.locked-mode { max-height: 680px; }
+  .panel.hover-mode { max-height: 280px; overflow: hidden; }
+  .panel.locked-mode { max-height: 680px; overflow-y: auto; }
 
   /* Header */
   .header {
@@ -100,8 +100,8 @@ const PANEL_CSS = css`
 
   /* Empty state */
   .empty-state {
-    display: flex; align-items: center; justify-content: center;
-    padding: 32px 16px; color: ${C.textTertiary}; font-size: 13px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 24px; color: ${C.textTertiary}; text-align: center;
   }
 
   /* Element header */
@@ -522,12 +522,7 @@ export class PanelController {
         panel.appendChild(this.renderEmptyState());
       } else {
         panel.appendChild(this.renderElementHeader());
-        if (this.isLocked) {
-          panel.appendChild(this.renderBody());
-        }
-      }
-
-      if (this.isLocked) {
+        panel.appendChild(this.renderBody());
         panel.appendChild(this.renderFooter());
       }
     }
@@ -605,7 +600,22 @@ export class PanelController {
   private renderEmptyState(): HTMLElement {
     const div = document.createElement('div');
     div.className = 'empty-state';
-    div.textContent = '◎ Hover over any element';
+
+    const icon = document.createElement('div');
+    icon.textContent = '◎';
+    icon.style.cssText = 'font-size:32px;margin-bottom:12px;opacity:0.4;';
+
+    const primary = document.createElement('div');
+    primary.textContent = 'Hover over any element';
+    primary.style.cssText = 'font-size:12px;font-weight:500;margin-bottom:4px;';
+
+    const secondary = document.createElement('div');
+    secondary.textContent = 'Click to lock selection and edit values';
+    secondary.style.cssText = 'font-size:11px;';
+
+    div.appendChild(icon);
+    div.appendChild(primary);
+    div.appendChild(secondary);
     return div;
   }
 
