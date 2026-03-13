@@ -1,0 +1,20 @@
+{
+  "name": "@designer-mode/extension",
+  "version": "0.1.0",
+  "description": "Browser extension (MV3) for Designer Mode",
+  "private": true,
+  "scripts": {
+    "build": "tsup && node scripts/copy-assets.js",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@designer-mode/core": "workspace:*",
+    "@designer-mode/inspector-react": "workspace:*",
+    "@designer-mode/inspector-vue": "workspace:*",
+    "@designer-mode/inspector-vanilla": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "designer-mode",
+  "version": "0.1.0",
+  "description": "AI-powered UI inspector for any JavaScript framework",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.js",
+      "types": "./dist/react.d.ts"
+    },
+    "./vue": {
+      "import": "./dist/vue.js",
+      "types": "./dist/vue.d.ts"
+    },
+    "./vanilla": {
+      "import": "./dist/vanilla.js",
+      "types": "./dist/vanilla.d.ts"
+    },
+    "./angular": {
+      "import": "./dist/angular.js",
+      "types": "./dist/angular.d.ts"
+    },
+    "./svelte": {
+      "import": "./dist/svelte.js",
+      "types": "./dist/svelte.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-dom": ">=16.8.0",
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "vue": { "optional": true }
+  },
+  "dependencies": {
+    "@designer-mode/core": "workspace:*",
+    "@designer-mode/inspector-react": "workspace:*",
+    "@designer-mode/inspector-vue": "workspace:*",
+    "@designer-mode/inspector-vanilla": "workspace:*",
+    "@designer-mode/inspector-angular": "workspace:*",
+    "@designer-mode/inspector-svelte": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0"
+  }
+}

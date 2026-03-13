@@ -1,0 +1,27 @@
+{
+  "name": "@designer-mode/server",
+  "version": "0.1.0",
+  "description": "Relay server, CLI tools, and MCP server for Designer Mode",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "designer-mode-server": "./bin/server.js",
+    "designer-mode-wait": "./bin/wait.js",
+    "designer-mode-mcp": "./bin/mcp.js",
+    "designer-mode": "./bin/cli.js"
+  },
+  "files": ["src", "bin"],
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  }
+}

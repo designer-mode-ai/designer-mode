@@ -1,0 +1,32 @@
+{
+  "name": "designer-mode-webpack-plugin",
+  "version": "0.1.0",
+  "description": "Webpack plugin for Designer Mode — injects framework inspector in dev mode",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "peerDependencies": {
+    "webpack": ">=4.0.0"
+  },
+  "dependencies": {
+    "@designer-mode/server": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "webpack": "^5.0.0",
+    "@types/webpack": "^5.0.0"
+  }
+}

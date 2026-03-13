@@ -1,0 +1,8 @@
+{
+  "name": "@designer-mode/inspector-angular",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "peerDependencies": { "@designer-mode/core": "workspace:*", "@angular/core": ">=14.0.0" }
+}

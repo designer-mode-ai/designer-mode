@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Designer Mode</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <span class="logo">🎨</span>
+      <span class="title">Designer Mode</span>
+    </div>
+
+    <div class="status" id="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Checking...</span>
+    </div>
+
+    <button class="toggle-btn" id="toggleBtn">Activate</button>
+
+    <div class="relay-section">
+      <div class="relay-status" id="relayStatus">
+        <span class="relay-dot" id="relayDot"></span>
+        <span id="relayText">Relay: checking...</span>
+      </div>
+    </div>
+
+    <a href="#" id="optionsLink" class="options-link">Settings</a>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

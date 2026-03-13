@@ -1,0 +1,11 @@
+{
+  "name": "@designer-mode/inspector-svelte",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./preprocessor": "./src/preprocessor.js"
+  },
+  "peerDependencies": { "@designer-mode/core": "workspace:*", "svelte": ">=4.0.0" }
+}

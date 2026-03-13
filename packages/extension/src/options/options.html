@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Designer Mode — Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Designer Mode Settings</h1>
+
+    <section>
+      <h2>Relay Server</h2>
+      <div class="field">
+        <label for="relayHost">Host</label>
+        <input type="text" id="relayHost" value="127.0.0.1" placeholder="127.0.0.1">
+      </div>
+      <div class="field">
+        <label for="relayPort">Port</label>
+        <input type="number" id="relayPort" value="3334" min="1024" max="65535">
+      </div>
+    </section>
+
+    <section>
+      <h2>Behaviour</h2>
+      <div class="field checkbox">
+        <input type="checkbox" id="autoActivate">
+        <label for="autoActivate">Auto-activate on all pages</label>
+      </div>
+    </section>
+
+    <div class="actions">
+      <button id="saveBtn">Save</button>
+      <span id="saveStatus" class="save-status"></span>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>

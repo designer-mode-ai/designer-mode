@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Designer Mode — Vanilla Example</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>Designer Mode — Vanilla Example</h1>
+    <p>Press <kbd>Ctrl+Shift+D</kbd> to activate the inspector, then click any element.</p>
+  </header>
+
+  <main class="app-main">
+    <section class="card" data-component="HeroCard" data-testid="hero-card">
+      <h2 class="card-title">Annotated Components</h2>
+      <p class="card-body">
+        This element has <code>data-component</code> and <code>data-testid</code> attributes so
+        the vanilla inspector can identify it. Click it with Designer Mode active.
+      </p>
+      <button
+        class="btn btn-primary"
+        data-component="PrimaryButton"
+        data-testid="primary-button"
+        onclick="alert('clicked!')"
+      >
+        Primary Button
+      </button>
+    </section>
+
+    <section class="card" data-component="TypographyCard" data-testid="typography-card">
+      <h2 class="card-title">Typography</h2>
+      <h3>Heading 3</h3>
+      <p>Regular paragraph text.</p>
+      <a href="#" onclick="return false">A link</a>
+    </section>
+
+    <section class="card" data-component="ColorCard" data-testid="color-card">
+      <h2 class="card-title">Colours</h2>
+      <div class="swatches">
+        <div class="swatch" style="--color: #037DD6" data-component="Swatch" data-testid="swatch-primary">
+          <span>Primary</span>
+        </div>
+        <div class="swatch" style="--color: #0260b4" data-component="Swatch" data-testid="swatch-dark">
+          <span>Dark</span>
+        </div>
+        <div class="swatch" style="--color: #f44336" data-component="Swatch" data-testid="swatch-danger">
+          <span>Dangeeer</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

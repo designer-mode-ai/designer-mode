@@ -1,0 +1,15 @@
+{
+  "name": "designer-mode-rn",
+  "version": "0.1.0",
+  "description": "Designer Mode for React Native — AI-powered UI inspector",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "echo 'Build handled by consuming app bundler'"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  },
+  "dependencies": {}
+}
