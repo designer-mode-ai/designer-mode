@@ -1,5 +1,6 @@
 /**
- * Setup wizard — detects the AI agent being used and installs the right rule file.
+ * Setup wizard — installs the designer-mode skill using the open Agent Skills standard.
+ * Works with Claude Code, Cursor, Codex, and Gemini CLI.
  */
 
 import fs from 'fs';
@@ -7,211 +8,102 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const RULES_DIR = path.join(__dirname, '../../agent-rules');
-
-const AGENT_DETECTORS = [
-  {
-    name: 'Claude Code',
-    detect: () => fs.existsSync('.claude'),
-    install: () => {
-      fs.mkdirSync('.claude/skills', { recursive: true });
-      const src = path.join(RULES_DIR, 'claude-code/skill.md');
-      if (fs.existsSync(src)) fs.copyFileSync(src, '.claude/skills/designer-mode.md');
-      else fs.writeFileSync('.claude/skills/designer-mode.md', getClaudeSkill());
-    },
-    message: "Skill installed. Say '/designer-mode' or 'run designer mode' to start.",
-  },
-  {
-    name: 'Cursor',
-    detect: () => fs.existsSync('.cursor'),
-    install: () => {
-      fs.mkdirSync('.cursor/rules/designer-mode', { recursive: true });
-      const src = path.join(RULES_DIR, 'cursor/RULE.md');
-      if (fs.existsSync(src)) fs.copyFileSync(src, '.cursor/rules/designer-mode/RULE.md');
-      else fs.writeFileSync('.cursor/rules/designer-mode/RULE.md', getCursorRule());
-    },
-    message: "Rule installed. Tell Cursor 'run designer mode' to start.",
-  },
-  {
-    name: 'Codex',
-    detect: () => fs.existsSync('AGENTS.md'),
-    install: () => {
-      const section = getAgentsSection();
-      const existing = fs.readFileSync('AGENTS.md', 'utf-8');
-      if (!existing.includes('Designer Mode')) {
-        fs.appendFileSync('AGENTS.md', '\n\n' + section);
-      }
-    },
-    message: "AGENTS.md updated. Tell Codex 'run designer mode' to start.",
-  },
-  {
-    name: 'Aider',
-    detect: () => fs.existsSync('CONVENTIONS.md') || fs.existsSync('.aider.conf.yml'),
-    install: () => {
-      const section = getAiderSection();
-      if (fs.existsSync('CONVENTIONS.md')) {
-        const existing = fs.readFileSync('CONVENTIONS.md', 'utf-8');
-        if (!existing.includes('Designer Mode')) fs.appendFileSync('CONVENTIONS.md', '\n\n' + section);
-      } else {
-        fs.writeFileSync('DESIGNER_MODE.md', section);
-      }
-    },
-    message: "Instructions installed. In aider, run /run npx designer-mode-wait to start.",
-  },
-];
+const SKILL_SRC = path.join(__dirname, '../../skill/SKILL.md');
 
 export async function runSetup(options = {}) {
-  const { yes = false } = options;
-
   console.log('\n🎨 Designer Mode Setup\n');
 
-  const detected = AGENT_DETECTORS.find(a => a.detect());
+  const dirs = [
+    '.claude/skills/designer-mode',   // Claude Code
+    '.agents/skills/designer-mode',   // Cursor, Codex, Gemini CLI (open standard)
+  ];
 
-  if (detected) {
-    console.log(`Detected AI agent: ${detected.name}`);
-    if (!yes) {
-      console.log(`This will install the agent rule for ${detected.name}.`);
-      // In a real interactive setup, prompt for confirmation
-      // For now, auto-proceed
-    }
-    detected.install();
-    console.log(`✓ ${detected.message}`);
-  } else {
-    fs.writeFileSync('DESIGNER_MODE.md', getGenericInstructions());
-    console.log('✓ Instructions written to DESIGNER_MODE.md');
-    console.log('  Share this file with your AI agent to get started.');
+  const allExist = dirs.every(d => fs.existsSync(path.join(d, 'SKILL.md')));
+  if (allExist) {
+    console.log('✓ Skill already installed.');
+    console.log('  Say "enter design mode" or use /designer-mode to start.\n');
+    return;
   }
 
-  console.log('\nNext steps:');
-  console.log('  1. Run: npx designer-mode-server');
-  console.log('  2. Activate the inspector in your app (🎨 button or Ctrl+Shift+D)');
-  console.log('  3. Tell your agent to start designer mode\n');
+  const content = fs.existsSync(SKILL_SRC)
+    ? fs.readFileSync(SKILL_SRC, 'utf8')
+    : getSkillContent();
+
+  for (const dir of dirs) {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'SKILL.md'), content);
+  }
+
+  console.log('✓ Skill installed to:');
+  console.log('    .claude/skills/designer-mode/   (Claude Code)');
+  console.log('    .agents/skills/designer-mode/   (Cursor, Codex, Gemini CLI)');
+  console.log('');
+  console.log('  Say "enter design mode" or use /designer-mode to start.');
+  console.log('');
+  console.log('Next steps:');
+  console.log('  1. Run your app (e.g. npm run dev)');
+  console.log('  2. Tell your agent to "enter design mode"');
+  console.log('  3. Click the 🎨 button in your app to start inspecting\n');
 }
 
-function getClaudeSkill() {
-  return `# Designer Mode
+function getSkillContent() {
+  return `---
+name: designer-mode
+description: Enter Designer Mode to listen for visual design change requests from the browser. Use when the user says "enter design mode", "start design mode", "run designer mode", or "designer loop".
+---
 
-When the user says "run designer mode", "start designer mode", "listen for design requests", or invokes /designer-mode:
+# Designer Mode
+
+A browser panel lets designers inspect elements and request design changes. You apply those changes to the source code.
 
 ## Steps
 
 1. Start the relay server in background:
    \`\`\`bash
-   npx designer-mode-server
+   npx designer-mode server &
    \`\`\`
    Wait for it to confirm "Listening on http://localhost:3334".
 
 2. Tell the user:
-   > Designer Mode ready.
-   > - Activate the inspector: 🎨 button or Ctrl+Shift+D
-   > - Click an element, type your request, hit Send
+   > Designer Mode is active. I'm now listening for design requests from the browser.
    >
-   > Listening for requests...
+   > To use it:
+   > - Open your app in the browser
+   > - Click the 🎨 Designer Mode button to activate the inspector
+   > - Hover over elements to see component info
+   > - Click an element to lock the selection and open the full editor
+   > - Type a change request in the chat input (e.g. "make the border radius 12px") and hit send
+   > - I'll apply the changes to your source code and respond in the panel
+   >
+   > I'll keep listening until you tell me to stop.
 
-3. Run and wait for a request:
-   \`\`\`bash
-   npx designer-mode-wait
-   \`\`\`
+3. Run \`npx designer-mode wait\` — this blocks until a design request arrives and prints the structured prompt to stdout. Use a 10-minute timeout.
 
-4. Read stdout — it contains component info, styles, changeset, and the designer's message.
+4. Read the output — it contains the component name, file path, line number, current styles, any visual edits the designer made, and their message.
 
-5. Apply the changes to source code.
+5. Read the relevant source files based on the file path provided.
 
-6. Confirm to the designer:
-   \`\`\`bash
-   curl -s -X POST http://localhost:3334/api/response \\
-     -H "Content-Type: text/plain" \\
-     -d "Done — <brief summary of what changed>"
-   \`\`\`
+6. Apply the requested design changes to the source code.
 
-7. Immediately go back to step 3.
-
-## Critical
-After EVERY request: edit source → curl response → npx designer-mode-wait.
-Never stop the loop unless the user says "stop" or "exit designer mode".
-`;
-}
-
-function getCursorRule() {
-  return `# Designer Mode — Agent Collaboration
-
-## When to Activate
-- "start designer mode"
-- "run designer mode"
-- "listen for design requests"
-- "designer loop"
-
-## Workflow
-
-1. Start relay server (once, \`block_until_ms: 0\`):
-   \`\`\`bash
-   npx designer-mode-server
-   \`\`\`
-
-2. Tell user how to send requests.
-
-3. Run \`npx designer-mode-wait\` with \`block_until_ms: 600000\`.
-
-4. Read the structured output (component, file, styles, changeset, message).
-
-5. Apply changes to source code.
-
-6. Send response:
+7. Send a response back to the panel:
    \`\`\`bash
    curl -s -X POST http://localhost:3334/api/response \\
      -H "Content-Type: text/plain" \\
-     -d "Done — <summary>"
+     -d "Done — <brief summary of what was changed>"
    \`\`\`
 
-7. IMMEDIATELY run \`npx designer-mode-wait\` again.
+8. **IMMEDIATELY** go back to step 3 and run \`npx designer-mode wait\` again.
 
-## CRITICAL
-Never skip step 7. Always re-run designer-wait after every request.
-`;
-}
+## Critical Rule
 
-function getAgentsSection() {
-  return `---
+After every request: **apply changes → send response → designer-mode wait**. Always.
+Never stop the loop unless the user explicitly says to stop or exit Designer Mode.
 
-## Designer Mode
+## Stopping
 
-When asked to "start designer mode" or "run designer mode":
-
-1. Run \`npx designer-mode-server\` in background
-2. Tell user to activate the inspector (🎨 button or Ctrl+Shift+D)
-3. Run \`npx designer-mode-wait\` — blocks until designer sends a request
-4. Apply changes from the structured prompt output
-5. Run: \`curl -s -X POST http://localhost:3334/api/response -H "Content-Type: text/plain" -d "Done — <summary>"\`
-6. Immediately run \`npx designer-mode-wait\` again
-
-Critical: Always re-run designer-wait after each request.
-`;
-}
-
-function getAiderSection() {
-  return `## Designer Mode
-
-1. In a separate terminal: \`npx designer-mode-server\`
-2. In aider chat: \`/run npx designer-mode-wait\`
-3. When a request arrives, apply the changes to source code
-4. \`/run curl -s -X POST http://localhost:3334/api/response -H "Content-Type: text/plain" -d "Done — <summary>"\`
-5. Immediately \`/run npx designer-mode-wait\` again
-`;
-}
-
-function getGenericInstructions() {
-  return `# Designer Mode Instructions
-
-## Starting the loop
-
-1. In a terminal: \`npx designer-mode-server\`
-2. In another terminal: \`npx designer-mode-wait\`
-   This blocks until the designer sends a request.
-3. When a request arrives, apply the changes to source code.
-4. Confirm: \`curl -s -X POST http://localhost:3334/api/response -H "Content-Type: text/plain" -d "Done — <summary>"\`
-5. Immediately run \`npx designer-mode-wait\` again.
-
-## The one rule
-After every request: apply changes → send response → run designer-mode-wait.
+When the user wants to exit:
+\`\`\`bash
+pkill -f "designer-mode server"
+\`\`\`
 `;
 }

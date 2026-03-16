@@ -3,8 +3,10 @@
  * designer-mode <command>
  *
  * Commands:
- *   setup    Install agent rule for your AI tool
- *   server   Start the relay server (alias for designer-mode-server)
+ *   setup    Install the designer-mode skill for your AI agent
+ *   server   Start the relay server
+ *   wait     Wait for a design request from the browser panel
+ *   mcp      Start the MCP server (relay + tools)
  */
 
 import { runSetup } from '../src/setup.js';
@@ -21,18 +23,29 @@ switch (command) {
     server.listen();
     break;
   }
+  case 'wait': {
+    await import('./wait.js');
+    break;
+  }
+  case 'mcp': {
+    const { startMcpServer } = await import('../src/mcp.js');
+    startMcpServer();
+    break;
+  }
   default:
     console.log(`
 designer-mode <command>
 
 Commands:
-  setup    Install agent rule for your AI coding tool
+  setup    Install the designer-mode skill for your AI agent
   server   Start the relay server
+  wait     Wait for a design request from the browser panel
+  mcp      Start the MCP server (relay + tools)
 
 Examples:
   npx designer-mode setup
-  npx designer-mode-server
-  npx designer-mode-wait
-  npx designer-mode-mcp
+  npx designer-mode server
+  npx designer-mode wait
+  npx designer-mode mcp
 `);
 }

@@ -20,6 +20,9 @@ importers:
 
   examples/react-app:
     dependencies:
+      '@designer-mode/server':
+        specifier: workspace:*
+        version: link:../../packages/server
       designer-mode:
         specifier: workspace:*
         version: link:../../packages/designer-mode

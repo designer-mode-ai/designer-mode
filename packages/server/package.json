@@ -7,9 +7,6 @@
     ".": "./src/index.js"
   },
   "bin": {
-    "designer-mode-server": "./bin/server.js",
-    "designer-mode-wait": "./bin/wait.js",
-    "designer-mode-mcp": "./bin/mcp.js",
     "designer-mode": "./bin/cli.js"
   },
   "files": ["src", "bin"],
