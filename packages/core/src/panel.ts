@@ -1,5 +1,5 @@
 import type { ComponentInfo, ChangesetEntry, RelayStatus, TokenPattern } from './types.js';
-import { getDirectTextContent } from './utils.js';
+
 
 /* ── Design Tokens ── */
 const C = {
@@ -447,9 +447,9 @@ export class PanelController {
   }
 
   private async checkHealth() {
-    this.relayStatus = 'checking';
+    const prev = this.relayStatus;
     this.relayStatus = await this.relay.checkHealth();
-    this.render();
+    if (this.relayStatus !== prev) this.render();
   }
 
   private async sendToAgent(message: string) {
@@ -498,6 +498,7 @@ export class PanelController {
   private render() {
     if (!this.shadow) return;
     const old = this.shadow.querySelector('.panel');
+    const prevScroll = old ? old.scrollTop : 0;
     if (old) old.remove();
 
     if (!this.isVisible) return;
@@ -523,6 +524,9 @@ export class PanelController {
     }
 
     this.shadow.appendChild(panel);
+    if (prevScroll) {
+      requestAnimationFrame(() => { panel.scrollTop = prevScroll; });
+    }
     this.setupDrag(panel);
   }
 
@@ -817,11 +821,9 @@ export class PanelController {
   }
 
   private setupMiniInput(input: HTMLInputElement, prop: string, _color: string) {
-    let editing = false;
     let startValue = '';
-    input.onfocus = () => { editing = true; startValue = input.value; input.select(); };
+    input.onfocus = () => { startValue = input.value; input.select(); };
     input.onblur = () => {
-      editing = false;
       if (this.selectedEl && input.value !== startValue) {
         const val = input.value.trim();
         const withUnit = /^\d+$/u.test(val) ? val + 'px' : val;
