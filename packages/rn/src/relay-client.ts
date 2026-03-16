@@ -1,5 +1,13 @@
 import type { RNComponentInfo, ChangesetEntry, DesignerModeRNOptions } from './types';
 
+function formatProps(props: Record<string, unknown> | null): [string, string][] {
+  if (!props) return [];
+  return Object.entries(props)
+    .filter(([k, v]) => k !== 'style' && k !== 'children' && typeof v !== 'function' && typeof v !== 'object')
+    .slice(0, 15)
+    .map(([k, v]) => [k, String(v)]);
+}
+
 export function buildAgentPrompt(
   info: RNComponentInfo,
   changeset: ChangesetEntry[],
@@ -13,9 +21,33 @@ export function buildAgentPrompt(
   ];
 
   if (info.parentComponent) lines.push(`  Parent    : ${info.parentComponent}`);
+  if (info.ancestorChain.length > 1) lines.push(`  Path      : ${info.ancestorChain.join(' > ')}`);
   if (info.textContent) lines.push(`  Text      : ${info.textContent}`);
   if (info.filePath) lines.push(`  File      : ${info.filePath}${info.lineNumber ? `:${info.lineNumber}` : ''}`);
   if (info.testID) lines.push(`  Test ID   : ${info.testID}`);
+
+  // Parent component props (the user component wrapping the tapped element)
+  const parentPropEntries = formatProps(info.parentProps);
+  if (parentPropEntries.length > 0) {
+    lines.push('', `${info.parentComponent ?? 'Parent'} Props`);
+    for (const [k, v] of parentPropEntries) {
+      lines.push(`  ${k.padEnd(14)}: ${v}`);
+    }
+  }
+
+  // Direct element props
+  const propEntries = formatProps(info.props);
+  if (propEntries.length > 0) {
+    lines.push('', 'Element Props');
+    for (const [k, v] of propEntries) {
+      lines.push(`  ${k.padEnd(14)}: ${v}`);
+    }
+  }
+
+  if (info.styleNames.length > 0) {
+    lines.push('', 'Style Names');
+    lines.push(`  ${info.styleNames.map(n => `styles.${n}`).join(', ')}`);
+  }
 
   if (info.layout) {
     lines.push('', 'Layout');

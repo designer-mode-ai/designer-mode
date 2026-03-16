@@ -335,6 +335,31 @@ export async function hitTestFromFiberTree(
   // File path: prefer direct component source, fall back to user component
   const source = directComp?.source ?? userComp?.source ?? null;
 
+  // Parent component props (user-level props like color, label, onPress)
+  const parentProps = userComp && userComp.name !== directComp?.name
+    ? userComp.fiber.memoizedProps
+    : null;
+
+  // Build ancestor chain walking up from the hit fiber
+  const ancestorChain: string[] = [];
+  {
+    let cur: Fiber | null = best.fiber;
+    while (cur && ancestorChain.length < 10) {
+      try {
+        if (typeof cur.type === 'string') {
+          const name = cur.type.replace(/^RCT/, '');
+          if (name && !ancestorChain.includes(name)) ancestorChain.push(name);
+        } else {
+          const name = getComponentName(cur.type);
+          if (name && !isInternalName(name) && !ancestorChain.includes(name)) {
+            ancestorChain.push(name);
+          }
+        }
+      } catch { /* skip */ }
+      cur = cur.return;
+    }
+  }
+
   return {
     componentName,
     parentComponent,
@@ -342,7 +367,9 @@ export async function hitTestFromFiberTree(
     filePath: source?.fileName ?? null,
     lineNumber: source?.lineNumber ?? null,
     props: best.fiber.memoizedProps,
+    parentProps,
     testID: (userComp?.fiber.memoizedProps?.testID as string) ?? null,
+    ancestorChain,
     layout: compLayout,
     style: resolvedStyle,
     styleNames,

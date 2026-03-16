@@ -6,8 +6,13 @@ export interface RNComponentInfo {
   textContent: string | null;
   filePath: string | null;
   lineNumber: number | null;
+  /** Props of the direct (tapped) native fiber */
   props: Record<string, unknown> | null;
+  /** Props of the parent user component (e.g. ColorSwatch's color, label) */
+  parentProps: Record<string, unknown> | null;
   testID: string | null;
+  /** Ancestor chain from direct component up (e.g. ["View", "ColorSwatch", "Card", "App"]) */
+  ancestorChain: string[];
   // Layout as measured by UIManager
   layout: {
     x: number;

@@ -13,6 +13,7 @@ import {
   Dimensions,
   type ViewStyle,
   type TextStyle,
+  Clipboard,
 } from 'react-native';
 import type { RNComponentInfo, DesignerModeRNOptions, ChangesetEntry } from './types';
 import { hitTestFromFiberTree } from './fiber';
@@ -238,6 +239,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
   const [agentWorking, setAgentWorking] = useState(false);
   const [relayStatus, setRelayStatus] = useState<RelayStatus>('checking');
   const [showFullPath, setShowFullPath] = useState(false);
+  const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const prevRelayStatus = useRef<RelayStatus>('checking');
   const scrollRef = useRef<ScrollView>(null);
@@ -415,6 +417,19 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 
           {/* Header */}
           <View style={s.header}>
+            <Pressable
+              style={[s.copyBtn, copied && s.copyBtnCopied]}
+              onPress={() => {
+                const prompt = buildAgentPrompt(selected, changeset, '');
+                Clipboard.setString(prompt);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+            >
+              <Text style={[s.copyBtnText, copied && s.copyBtnTextCopied]}>
+                {copied ? '\u2713 Copied' : 'Copy for AI'}
+              </Text>
+            </Pressable>
             <Text style={s.headerTitle}>Designer Mode</Text>
             <View style={s.headerActions}>
               <Pressable onPress={() => setSelected(null)} style={s.iconBtn}>
@@ -878,7 +893,7 @@ const s = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderBottomWidth: 1,
@@ -921,6 +936,24 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  copyBtn: {
+    backgroundColor: C.surface,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    zIndex: 1,
+  },
+  copyBtnCopied: {
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+  },
+  copyBtnText: {
+    fontSize: 10,
+    color: C.textSecondary,
+    fontWeight: '500',
+  } as TextStyle,
+  copyBtnTextCopied: {
+    color: C.success,
+  } as TextStyle,
   elName: {
     fontWeight: '700',
     fontSize: 13,
