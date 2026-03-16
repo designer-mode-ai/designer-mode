@@ -71,8 +71,8 @@ const PANEL_CSS = css`
     background: ${C.surface}; cursor: move; flex-shrink: 0;
     border-bottom: 1px solid ${C.divider};
   }
-  .drag-handle { color: ${C.accent}; font-size: 16px; cursor: grab; flex-shrink: 0; line-height: 1; }
-  .header-title { flex: 1; font-weight: 600; font-size: 13px; color: ${C.accent}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drag-handle { color: ${C.textSecondary}; font-size: 16px; cursor: grab; flex-shrink: 0; line-height: 1; }
+  .header-title { flex: 1; font-weight: 600; font-size: 13px; color: ${C.textSecondary}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .header-actions { display: flex; gap: 4px; flex-shrink: 0; }
   .icon-btn {
     background: none; border: none; color: ${C.textSecondary}; cursor: pointer;
