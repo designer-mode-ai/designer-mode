@@ -908,7 +908,7 @@ const s = StyleSheet.create({
   // Composer
   composer: {
     paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingBottom: 34,
     paddingTop: 6,
   },
   composerWrap: {
@@ -919,13 +919,13 @@ const s = StyleSheet.create({
     color: C.text,
     borderWidth: 1,
     borderColor: C.divider,
-    borderRadius: 8,
-    paddingLeft: 10,
-    paddingRight: 40,
-    paddingVertical: 8,
-    fontSize: 11,
-    minHeight: 36,
-    maxHeight: 100,
+    borderRadius: 10,
+    paddingLeft: 12,
+    paddingRight: 42,
+    paddingVertical: 10,
+    fontSize: 13,
+    minHeight: 56,
+    maxHeight: 120,
   } as TextStyle,
   sendBtn: {
     position: 'absolute',
