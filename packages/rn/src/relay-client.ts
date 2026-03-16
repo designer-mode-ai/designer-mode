@@ -82,9 +82,12 @@ export async function pollForResponse(
 
 export async function checkRelayHealth(relayUrl: string): Promise<boolean> {
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
     const r = await fetch(`${relayUrl}/api/health`, {
-      signal: AbortSignal.timeout(2000),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     return r.ok;
   } catch {
     return false;
