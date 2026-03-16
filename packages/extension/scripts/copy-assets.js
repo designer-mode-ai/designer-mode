@@ -1,8 +1,6 @@
-import { cpSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+const { cpSync, mkdirSync } = require('node:fs');
+const { resolve } = require('node:path');
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 const dist = resolve(root, 'dist');
 
@@ -24,3 +22,5 @@ for (const dir of ['popup', 'options']) {
     } catch {}
   }
 }
+
+console.log('[copy-assets] Assets copied to dist/');

@@ -1,2 +1,0 @@
-Icons should be placed here: icon16.png, icon32.png, icon48.png, icon128.png
-Generate them from the 🎨 emoji or a custom SVG.

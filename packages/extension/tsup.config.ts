@@ -19,6 +19,7 @@ export default defineConfig([
     noExternal: [/.*/], // Bundle everything for extension
     esbuildOptions(options) {
       options.alias = alias;
+      options.outExtension = { '.js': '.js' };
     },
   },
   {
@@ -33,6 +34,7 @@ export default defineConfig([
     noExternal: [/.*/],
     esbuildOptions(options) {
       options.alias = alias;
+      options.outExtension = { '.js': '.js' };
     },
   },
 ]);

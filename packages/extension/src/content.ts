@@ -4,7 +4,7 @@ import type { InspectorAdapter, DesignerModeOptions } from '@designer-mode/core'
 let core: DesignerModeCore | null = null;
 
 async function detectFrameworkAndInit(options: DesignerModeOptions): Promise<void> {
-  let adapter: InspectorAdapter;
+  let adapter: InspectorAdapter | undefined;
 
   // Try React
   const reactRoot = document.querySelector('[data-reactroot]') ||
@@ -21,7 +21,7 @@ async function detectFrameworkAndInit(options: DesignerModeOptions): Promise<voi
   }
 
   // Try Vue 3
-  if (!adapter!) {
+  if (!adapter) {
     const vueRoot = document.querySelector('[data-v-app]') || document.querySelector('#app');
     if (vueRoot && (vueRoot as any).__vue_app__) {
       const { VueInspectorAdapter } = await import('@designer-mode/inspector-vue' as any);
@@ -31,13 +31,14 @@ async function detectFrameworkAndInit(options: DesignerModeOptions): Promise<voi
   }
 
   // Fallback to vanilla
-  if (!adapter!) {
+  if (!adapter) {
     const { VanillaInspectorAdapter } = await import('@designer-mode/inspector-vanilla' as any);
     adapter = new VanillaInspectorAdapter();
     console.debug('[designer-mode] Vanilla (no framework) detected');
   }
 
-  core = new DesignerModeCore(adapter!, options);
+  core = new DesignerModeCore({ adapter: adapter!, ...options });
+  core.mount();
 }
 
 // Load saved settings from extension storage
@@ -60,11 +61,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'TOGGLE':
       if (core) {
         core.toggle();
-        sendResponse({ ok: true, active: core.isActive() });
+        sendResponse({ ok: true, active: core.isMounted() });
       } else {
         getSettings().then(opts => {
           detectFrameworkAndInit(opts).then(() => {
-            core?.toggle();
+            core?.setActive(true);
             sendResponse({ ok: true, active: true });
           });
         });
@@ -72,11 +73,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true; // async response
 
     case 'GET_STATUS':
-      sendResponse({ active: core?.isActive() ?? false });
+      sendResponse({ active: core?.isMounted() ?? false });
       break;
 
     case 'DESTROY':
-      core?.destroy();
+      core?.unmount();
       core = null;
       sendResponse({ ok: true });
       break;
@@ -84,7 +85,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     case 'UPDATE_OPTIONS':
       // Re-init with new options
       if (core) {
-        core.destroy();
+        core.unmount();
         core = null;
       }
       getSettings().then(opts => {
@@ -102,7 +103,7 @@ getSettings().then(opts => {
     chrome.storage.sync.get({ autoActivate: false }, syncItems => {
       if (syncItems.autoActivate) {
         detectFrameworkAndInit(opts).then(() => {
-          core?.activate();
+          core?.setActive(true);
         });
       }
     });
