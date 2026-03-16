@@ -9,6 +9,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
+  PanResponder,
+  Dimensions,
   type ViewStyle,
   type TextStyle,
 } from 'react-native';
@@ -151,6 +153,42 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
   const prevRelayStatus = useRef<RelayStatus>('checking');
   const scrollRef = useRef<ScrollView>(null);
 
+  // Bottom sheet drag
+  const translateY = useRef(new Animated.Value(0)).current;
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dy) > 5,
+      onPanResponderMove: (_, gs) => {
+        // Only allow dragging down
+        if (gs.dy > 0) {
+          translateY.setValue(gs.dy);
+        }
+      },
+      onPanResponderRelease: (_, gs) => {
+        const screenH = Dimensions.get('window').height;
+        // If dragged more than 30% of screen or fast fling, dismiss
+        if (gs.dy > screenH * 0.2 || gs.vy > 1.5) {
+          Animated.timing(translateY, {
+            toValue: screenH,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            setSelected(null);
+            translateY.setValue(0);
+          });
+        } else {
+          // Snap back
+          Animated.spring(translateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            bounciness: 6,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
   // Reset state when designer mode is activated
   useEffect(() => {
     if (active) {
@@ -160,8 +198,9 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
       setMessage('');
       setAgentWorking(false);
       setShowFullPath(false);
+      translateY.setValue(0);
     }
-  }, [active]);
+  }, [active, translateY]);
 
   // Check relay health
   useEffect(() => {
@@ -241,10 +280,20 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
         </TouchableWithoutFeedback>
       )}
 
+      {/* Backdrop */}
+      {selected && (
+        <Pressable style={s.backdrop} onPress={() => setSelected(null)} />
+      )}
+
       {/* Inspector panel */}
       {selected && (
-        <View style={s.panel}>
-          {/* Header — matches web: drag handle, title, actions */}
+        <Animated.View style={[s.panel, { transform: [{ translateY }] }]}>
+          {/* Drag handle */}
+          <View style={s.handleBar} {...panResponder.panHandlers}>
+            <View style={s.handle} />
+          </View>
+
+          {/* Header */}
           <View style={s.header}>
             <Text style={s.headerTitle}>Designer Mode</Text>
             <View style={s.headerActions}>
@@ -448,7 +497,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
               </View>
             </View>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Bottom bar — replaces the FAB when designer mode is active */}
@@ -560,16 +609,22 @@ const s = StyleSheet.create({
     lineHeight: 18,
   } as TextStyle,
 
+  // Backdrop
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  } as ViewStyle,
+
   // Panel
   panel: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    maxHeight: '75%',
+    maxHeight: '80%',
     backgroundColor: C.bg,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.55,
@@ -577,20 +632,34 @@ const s = StyleSheet.create({
     elevation: 24,
   } as ViewStyle,
 
+  // Drag handle
+  handleBar: {
+    alignItems: 'center',
+    paddingTop: 10,
+    paddingBottom: 6,
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+
   // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: C.surface,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
+    paddingVertical: 6,
     borderBottomWidth: 1,
     borderBottomColor: C.divider,
   },
   headerTitle: {
-    flex: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    textAlign: 'center',
     fontWeight: '600',
     fontSize: 13,
     color: C.textSecondary,
@@ -598,6 +667,7 @@ const s = StyleSheet.create({
   headerActions: {
     flexDirection: 'row',
     gap: 4,
+    zIndex: 1,
   },
   iconBtn: {
     paddingHorizontal: 6,
@@ -924,8 +994,8 @@ const s = StyleSheet.create({
     paddingRight: 42,
     paddingVertical: 10,
     fontSize: 13,
-    minHeight: 56,
-    maxHeight: 120,
+    minHeight: 80,
+    maxHeight: 150,
   } as TextStyle,
   sendBtn: {
     position: 'absolute',
