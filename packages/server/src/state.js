@@ -31,15 +31,15 @@ export class RelayState {
       return Promise.resolve(this.messageQueue.shift());
     }
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const idx = this.waitingResolvers.indexOf(resolve);
-        if (idx !== -1) this.waitingResolvers.splice(idx, 1);
-        reject(new Error('TIMEOUT'));
-      }, timeoutMs);
       const wrappedResolve = (msg) => {
         clearTimeout(timer);
         resolve(msg);
       };
+      const timer = setTimeout(() => {
+        const idx = this.waitingResolvers.indexOf(wrappedResolve);
+        if (idx !== -1) this.waitingResolvers.splice(idx, 1);
+        reject(new Error('TIMEOUT'));
+      }, timeoutMs);
       this.waitingResolvers.push(wrappedResolve);
     });
   }
@@ -54,21 +54,26 @@ export class RelayState {
     }
   }
 
+  /** Drain any queued responses — called before a new request to avoid stale data */
+  flushResponses() {
+    this.responseQueue.length = 0;
+  }
+
   /** Called by HTTP handler for GET /api/poll */
   waitForResponse(timeoutMs = 30000) {
     if (this.responseQueue.length > 0) {
       return Promise.resolve(this.responseQueue.shift());
     }
     return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        const idx = this.responseWaiters.indexOf(resolve);
-        if (idx !== -1) this.responseWaiters.splice(idx, 1);
-        reject(new Error('TIMEOUT'));
-      }, timeoutMs);
       const wrappedResolve = (msg) => {
         clearTimeout(timer);
         resolve(msg);
       };
+      const timer = setTimeout(() => {
+        const idx = this.responseWaiters.indexOf(wrappedResolve);
+        if (idx !== -1) this.responseWaiters.splice(idx, 1);
+        reject(new Error('TIMEOUT'));
+      }, timeoutMs);
       this.responseWaiters.push(wrappedResolve);
     });
   }

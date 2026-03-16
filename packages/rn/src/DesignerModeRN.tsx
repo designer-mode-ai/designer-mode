@@ -346,14 +346,24 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
     const msg = message.trim();
     if (!msg && changeset.length === 0) return;
 
-    if (msg) setChatMessages(prev => [...prev, { type: 'sent', text: msg }]);
+    const parts: string[] = [];
+    if (changeset.length > 0) {
+      parts.push(changeset.map(e => `${e.property}: ${e.original} → ${e.current}`).join('\n'));
+    }
+    if (msg) parts.push(msg);
+    setChatMessages(prev => [...prev, { type: 'sent', text: parts.join('\n\n') }]);
+    setEdits({});
+    setAddedStyleNames([]);
+    setRemovedStyleNames([]);
     setAgentWorking(true);
     setMessage('');
 
     const prompt = buildAgentPrompt(selected, changeset, msg);
     try {
-      await sendToRelay(relayUrl, prompt);
+      // Abort any previous poll and flush stale responses
       abortRef.current?.abort();
+      await fetch(`${relayUrl}/api/flush`, { method: 'POST' }).catch(() => {});
+      await sendToRelay(relayUrl, prompt);
       abortRef.current = new AbortController();
       const response = await pollForResponse(relayUrl, abortRef.current.signal);
       if (response) {
@@ -585,26 +595,6 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
               </Section>
             )}
 
-            {/* Chat messages */}
-            {chatMessages.length > 0 && (
-              <View style={s.messageThread}>
-                {chatMessages.map((msg, i) => (
-                  <View key={i} style={msg.type === 'sent' ? s.msgSent : s.msgAgent}>
-                    <Text style={msg.type === 'sent' ? s.msgSentText : s.msgAgentText}>
-                      {msg.text}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Agent working indicator */}
-            {agentWorking && (
-              <View style={s.agentWorking}>
-                <PulseOrb />
-                <Text style={s.agentWorkingText}>Check your agent for progress and approvals</Text>
-              </View>
-            )}
           </ScrollView>
 
           {/* Footer */}
@@ -633,6 +623,27 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
                 <Pressable onPress={() => sendRequest()} style={s.applyBtn}>
                   <Text style={s.applyBtnText}>Apply</Text>
                 </Pressable>
+              </View>
+            )}
+
+            {/* Chat messages */}
+            {chatMessages.length > 0 && (
+              <View style={s.messageThread}>
+                {chatMessages.map((msg, i) => (
+                  <View key={i} style={msg.type === 'sent' ? s.msgSent : s.msgAgent}>
+                    <Text style={msg.type === 'sent' ? s.msgSentText : s.msgAgentText}>
+                      {msg.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Agent working indicator */}
+            {agentWorking && (
+              <View style={s.agentWorking}>
+                <PulseOrb />
+                <Text style={s.agentWorkingText}>Check your agent for progress and approvals</Text>
               </View>
             )}
 

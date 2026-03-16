@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "designer-mode": {
+      "command": "node",
+      "args": ["../../packages/server/bin/cli.js", "mcp"],
+      "env": {
+        "DESIGNER_HOST": "0.0.0.0"
+      }
+    }
+  }
+}

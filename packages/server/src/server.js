@@ -80,6 +80,11 @@ export function createServer(options = {}) {
           res.end();
         });
 
+    } else if (req.method === 'POST' && url.pathname === '/api/flush') {
+      state.flushResponses();
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+
     } else if (req.method === 'GET' && url.pathname === '/api/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, version: '0.1.0' }));
