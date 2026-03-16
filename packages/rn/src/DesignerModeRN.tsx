@@ -458,7 +458,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
           >
             {/* Text Content section — editable, like web */}
             {selected.textContent != null && (
-              <Section icon={'\u270F'} title="Text Content">
+              <Section icon={'\u270F\uFE0E'} title="Text Content">
                 <TextInput
                   style={s.textContentInput}
                   defaultValue={edits['__textContent']?.current ?? selected.textContent}
@@ -471,7 +471,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 
             {/* Layout section */}
             {selected.layout && (
-              <Section icon={'\u229E'} title="Layout">
+              <Section icon={'\u229E\uFE0E'} title="Layout">
                 <View style={s.twoCol}>
                   <PropRow half label="W" value={`${Math.round(selected.layout.width)}`} />
                   <PropRow half label="H" value={`${Math.round(selected.layout.height)}`} />
@@ -513,7 +513,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 
             {/* Fill & Stroke section */}
             {categories?.fillStroke && categories.fillStroke.length > 0 && (
-              <Section icon={'\u25C9'} title="Fill & Stroke">
+              <Section icon={'\u25C9\uFE0E'} title="Fill & Stroke">
                 {categories.fillStroke.map(([key, val]) => {
                   const displayVal = edits[key]?.current ?? val;
                   const swatch = isColorValue(displayVal) ? displayVal : undefined;
@@ -527,7 +527,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             )}
 
             {/* Style Names section — add/remove from style array */}
-            <Section icon={'\u2702'} title="Style Names">
+            <Section icon={'\u2702\uFE0E'} title="Style Names">
               <View style={s.styleNamesWrap}>
                 {selected.styleNames
                   .filter(name => !removedStyleNames.includes(name))
@@ -559,7 +559,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             </Section>
 
             {/* Component section */}
-            <Section icon={'\u269B'} title="Component">
+            <Section icon={'\u269B\uFE0E'} title="Component">
               <PropRow label="Name" value={selected.componentName} mono={false} />
               {selected.testID && <PropRow label="Test ID" value={selected.testID} />}
               {selected.filePath && (
@@ -588,7 +588,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 
             {/* Other styles */}
             {categories?.other && categories.other.length > 0 && (
-              <Section icon={'\u2699'} title="Other Styles" defaultOpen={false}>
+              <Section icon={'\u2699\uFE0E'} title="Other Styles" defaultOpen={false}>
                 {categories.other.map(([key, val]) => (
                   <PropRow key={key} label={key} value={val} />
                 ))}
@@ -968,8 +968,8 @@ const s = StyleSheet.create({
   },
   sectionIcon: {
     fontSize: 11,
-    width: 14,
-    textAlign: 'center',
+    width: 18,
+    textAlign: 'left',
     color: C.textSecondary,
   } as TextStyle,
   sectionTitle: {
