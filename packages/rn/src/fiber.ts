@@ -232,8 +232,18 @@ export async function hitTestFromFiberTree(
   // Extract text content from the tapped element
   let textContent: string | null = null;
   const hitProps = best.fiber.memoizedProps;
-  if (hitProps?.children && typeof hitProps.children === 'string') {
-    textContent = hitProps.children;
+  if (hitProps?.children) {
+    if (typeof hitProps.children === 'string') {
+      textContent = hitProps.children;
+    } else if (typeof hitProps.children === 'number') {
+      textContent = String(hitProps.children);
+    } else if (Array.isArray(hitProps.children)) {
+      // Mixed children (e.g. "text with " + <Text>bold</Text> + " more")
+      const parts = hitProps.children
+        .filter((c: unknown) => typeof c === 'string' || typeof c === 'number')
+        .map(String);
+      if (parts.length > 0) textContent = parts.join('');
+    }
   }
 
   // Find direct component (e.g. Text, View) and user component (e.g. Card)
