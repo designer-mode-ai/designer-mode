@@ -82,6 +82,10 @@ export class DesignerModeCore {
     this.isActive = active;
     if (active) {
       this.overlay.activate();
+      if (this.toggleCtrl) {
+        const tp = this.toggleCtrl.getPosition();
+        this.panel.setPosition(tp.right, tp.bottom);
+      }
       this.panel.showCompact();
     } else {
       this.overlay.deactivate();

@@ -325,7 +325,7 @@ export class PanelController {
   private isMinimized = false;
   private isVisible = false;
   private isLocked = false;
-  private pos = { x: 0, y: 0 };
+  private anchor: { h: 'left' | 'right'; x: number; v: 'top' | 'bottom'; y: number } = { h: 'right', x: 20, v: 'bottom', y: 20 };
   private sectionStates: Map<string, boolean> = new Map();
   private healthInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -345,7 +345,6 @@ export class PanelController {
     this.shadow.appendChild(style);
 
     // Align bottom edge with toggle button (bottom: 20px, right: 20px)
-    this.pos = { x: 20, y: 20 }; // x=right offset, y=bottom offset
     this.render();
     container.appendChild(this.host);
 
@@ -357,6 +356,36 @@ export class PanelController {
 
     this.checkHealth();
     this.healthInterval = setInterval(() => this.checkHealth(), 10000);
+  }
+
+  setPosition(right: number, bottom: number) {
+    const panelW = 340;
+    const panelH = 680; // max locked height
+    const toggleSize = 44;
+
+    // Determine horizontal anchor
+    const toggleLeft = window.innerWidth - right - toggleSize;
+    if (right + panelW <= window.innerWidth) {
+      // Panel fits to the right-aligned side
+      this.anchor = { ...this.anchor, h: 'right', x: right };
+    } else if (toggleLeft + panelW <= window.innerWidth) {
+      // Panel fits on the left side
+      this.anchor = { ...this.anchor, h: 'left', x: toggleLeft };
+    } else {
+      this.anchor = { ...this.anchor, h: 'right', x: Math.max(0, window.innerWidth - panelW) };
+    }
+
+    // Determine vertical anchor
+    const toggleTop = window.innerHeight - bottom - toggleSize;
+    if (bottom + panelH <= window.innerHeight) {
+      // Panel fits growing upward from bottom
+      this.anchor = { ...this.anchor, v: 'bottom', y: bottom };
+    } else if (toggleTop + panelH <= window.innerHeight) {
+      // Panel fits growing downward from top
+      this.anchor = { ...this.anchor, v: 'top', y: toggleTop };
+    } else {
+      this.anchor = { ...this.anchor, v: 'bottom', y: Math.max(0, window.innerHeight - panelH) };
+    }
   }
 
   showCompact() {
@@ -505,7 +534,7 @@ export class PanelController {
 
     const panel = document.createElement('div');
     panel.className = `panel${this.isMinimized ? ' minimized' : ''} ${this.isLocked ? 'locked-mode' : 'hover-mode'}`;
-    panel.style.cssText = `right:${this.pos.x}px;bottom:${this.pos.y}px;`;
+    panel.style.cssText = `${this.anchor.h}:${this.anchor.x}px;${this.anchor.v}:${this.anchor.y}px;`;
 
     panel.appendChild(this.renderHeader());
 
@@ -1290,23 +1319,27 @@ export class PanelController {
     const header = panel.querySelector('.header') as HTMLElement;
     if (!header) return;
     let dragging = false;
-    let ox = 0, oy = 0;
+    let startX = 0, startY = 0;
 
     header.onmousedown = (e) => {
       if ((e.target as HTMLElement).closest('button')) return;
       dragging = true;
-      ox = e.clientX + this.pos.x; // right-based: clientX + right = anchor
-      oy = e.clientY + this.pos.y; // bottom-based: clientY + bottom = anchor
+      startX = e.clientX;
+      startY = e.clientY;
       e.preventDefault();
     };
     const onMove = (e: MouseEvent) => {
       if (!dragging) return;
-      this.pos = {
-        x: Math.max(0, Math.min(window.innerWidth - 340, ox - e.clientX)),
-        y: Math.max(0, Math.min(window.innerHeight - 100, oy - e.clientY)),
-      };
-      panel.style.right = `${this.pos.x}px`;
-      panel.style.bottom = `${this.pos.y}px`;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const dirX = this.anchor.h === 'right' ? -1 : 1;
+      const dirY = this.anchor.v === 'bottom' ? -1 : 1;
+      this.anchor.x = Math.max(0, Math.min(window.innerWidth - 340, this.anchor.x + dx * dirX));
+      this.anchor.y = Math.max(0, Math.min(window.innerHeight - 100, this.anchor.y + dy * dirY));
+      panel.style[this.anchor.h] = `${this.anchor.x}px`;
+      panel.style[this.anchor.v] = `${this.anchor.y}px`;
+      startX = e.clientX;
+      startY = e.clientY;
     };
     const onUp = () => { dragging = false; };
 
