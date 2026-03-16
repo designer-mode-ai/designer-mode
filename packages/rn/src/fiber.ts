@@ -1,7 +1,8 @@
 // React Native fiber traversal
-// Walks the fiber tree to find the component owning a given native view tag
+// Walks the fiber tree to discover all user components with native views
 
-declare const __DEV__: boolean;
+import { findNodeHandle, UIManager, StyleSheet } from 'react-native';
+import type { RNComponentInfo } from './types';
 
 interface Fiber {
   type: any;
@@ -12,77 +13,242 @@ interface Fiber {
   sibling: Fiber | null;
   stateNode: any;
   _debugSource?: { fileName: string; lineNumber: number } | null;
+  tag: number;
 }
 
-function getFiberFromTag(rootTag: number): Fiber | null {
-  // React Native exposes the root fiber via __reactFiber or similar
-  // on the root container. We walk from the root.
+// Fiber tags for host (native) components
+const HOST_COMPONENT = 5;
+const HOST_TEXT = 6;
+
+// RN built-in names to skip when looking for user component names
+const BUILTIN_NAMES = new Set([
+  // React Native primitives
+  'View', 'RCTView', 'Text', 'RCTText', 'Image', 'RCTImage',
+  'ScrollView', 'RCTScrollView', 'TextInput', 'RCTTextInput',
+  'SafeAreaView', 'RCTSafeAreaView', 'Pressable', 'TouchableOpacity',
+  'TouchableWithoutFeedback', 'TouchableHighlight', 'FlatList',
+  'SectionList', 'Modal', 'ActivityIndicator', 'StatusBar',
+  'KeyboardAvoidingView', 'VirtualizedList',
+  // Designer Mode internals
+  'DesignerModeRN', 'PulseOrb',
+  // React/RN internals
+  'DebuggingOverlay', 'AppContainer', 'RootComponent',
+]);
+
+/** Names that indicate framework internals, not user components */
+function isInternalName(name: string): boolean {
+  if (BUILTIN_NAMES.has(name)) return true;
+  // Filter out Context providers/consumers, HOC wrappers
+  if (name.endsWith('Context') || name.endsWith('Provider') || name.endsWith('Consumer')) return true;
+  if (name.startsWith('RCT') || name.startsWith('RNS')) return true;
+  // Names with parentheses like "main(RootComponent)"
+  if (name.includes('(') || name.includes(')')) return true;
+  // Expo/React internals
+  if (name === 'ErrorBoundary' || name === 'Suspense' || name === 'Fragment') return true;
+  if (name === 'main' || name === 'PerformanceLogger') return true;
+  return false;
+}
+
+/**
+ * Get all fiber roots from the React DevTools hook.
+ */
+function getFiberRoots(): Fiber[] {
+  const roots: Fiber[] = [];
   try {
-    // Access React Native internals (dev mode only)
-    const ReactNative = require('react-native');
-    const { findNodeHandle } = ReactNative;
+    const hook = (global as any).__REACT_DEVTOOLS_GLOBAL_HOOK__;
+    if (!hook) return roots;
 
-    // Walk the global fiber root
-    // React Native stores fiber roots on the renderer
-    const rendererDev = (global as any).__REACT_DEVTOOLS_GLOBAL_HOOK__?.renderers;
-    if (!rendererDev) return null;
+    // Method 1: getFiberRoots on renderers
+    if (hook.renderers) {
+      for (const [id, renderer] of hook.renderers) {
+        if (renderer.getFiberRoots) {
+          const fiberRoots = renderer.getFiberRoots(id);
+          if (fiberRoots) {
+            for (const root of fiberRoots) {
+              if (root.current) roots.push(root.current);
+            }
+          }
+        }
+      }
+    }
 
-    for (const [, renderer] of rendererDev) {
-      const roots = renderer.currentDispatcherRef?.current;
-      // Try to find fiber by stateNode nativeTag
-      // This is a best-effort walk in DEV mode
-      const root = renderer.getFiberRoots?.(rootTag);
-      if (root) {
-        for (const fiberRoot of root) {
-          const fiber = findFiberByTag(fiberRoot.current, rootTag);
-          if (fiber) return fiber;
+    // Method 2: getFiberRoots on hook itself
+    if (roots.length === 0 && hook.getFiberRoots) {
+      for (const [id] of hook.renderers ?? []) {
+        const fiberRoots = hook.getFiberRoots(id);
+        if (fiberRoots) {
+          for (const root of fiberRoots) {
+            if (root.current) roots.push(root.current);
+          }
         }
       }
     }
   } catch {
     // Expected in production
   }
+  return roots;
+}
+
+/**
+ * Walk up from a host fiber to find the nearest user component.
+ */
+function getComponentName(type: any): string | null {
+  if (!type) return null;
+  if (typeof type === 'string') return null;
+  if (type.displayName) return type.displayName;
+  if (type.name) return type.name;
+  // ForwardRef
+  if (type.render) {
+    const render = type.render;
+    return render?.displayName || render?.name || null;
+  }
   return null;
 }
 
-function findFiberByTag(fiber: Fiber | null, tag: number): Fiber | null {
-  if (!fiber) return null;
-  if (fiber.stateNode?.nativeTag === tag) return fiber;
-
-  const childResult = findFiberByTag(fiber.child, tag);
-  if (childResult) return childResult;
-
-  return findFiberByTag(fiber.sibling, tag);
-}
-
-function walkFiberForName(fiber: Fiber | null): { name: string; source: { fileName: string; lineNumber: number } | null } {
-  let current: Fiber | null = fiber;
+function findUserComponent(hostFiber: Fiber): { name: string; fiber: Fiber; source: { fileName: string; lineNumber: number } | null } | null {
+  let current: Fiber | null = hostFiber;
   while (current) {
-    const type = current.type;
-    if (type) {
-      const name = type.displayName || type.name || null;
-      if (name && name !== 'View' && name !== 'Text' && name !== 'Image') {
+    try {
+      const name = getComponentName(current.type);
+      if (name && !isInternalName(name)) {
         return {
           name,
+          fiber: current,
           source: current._debugSource ?? null,
         };
       }
+    } catch {
+      // Skip fibers with problematic types
     }
     current = current.return;
   }
-  return { name: 'Unknown', source: null };
+  return null;
 }
 
-export function getComponentInfoFromFiber(fiber: Fiber | null): { name: string; filePath: string | null; lineNumber: number | null; props: Record<string, unknown> | null } {
-  if (!fiber) return { name: 'Unknown', filePath: null, lineNumber: null, props: null };
+/**
+ * Collect ALL leaf host (native) fibers from the tree.
+ */
+function collectAllHostFibers(fiber: Fiber | null, results: Fiber[]) {
+  if (!fiber) return;
 
-  const { name, source } = walkFiberForName(fiber);
+  if (fiber.tag === HOST_COMPONENT && fiber.stateNode) {
+    results.push(fiber);
+  }
+
+  collectAllHostFibers(fiber.child, results);
+  collectAllHostFibers(fiber.sibling, results);
+}
+
+/**
+ * Measure a native view's layout on screen.
+ */
+function measureNativeView(hostFiber: Fiber): Promise<RNComponentInfo['layout']> {
+  return new Promise((resolve) => {
+    try {
+      const handle = findNodeHandle(hostFiber.stateNode);
+      if (!handle) { resolve(null); return; }
+
+      UIManager.measure(handle, (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        if (width === 0 && height === 0) { resolve(null); return; }
+        resolve({ x, y, width, height, pageX, pageY });
+      });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * Discover the component at a touch point by:
+ * 1. Collecting all native host fibers
+ * 2. Measuring them all
+ * 3. Hit-testing against the touch point
+ * 4. Walking up from the best hit to find the owning user component
+ */
+export async function hitTestFromFiberTree(
+  touchX: number,
+  touchY: number
+): Promise<RNComponentInfo | null> {
+  const roots = getFiberRoots();
+  if (roots.length === 0) return null;
+
+  // Collect all host fibers
+  const hostFibers: Fiber[] = [];
+  for (const root of roots) {
+    collectAllHostFibers(root, hostFibers);
+  }
+
+  if (hostFibers.length === 0) return null;
+
+  // Measure all in parallel
+  const measured: { fiber: Fiber; layout: NonNullable<RNComponentInfo['layout']> }[] = [];
+  await Promise.all(
+    hostFibers.map(async (fiber) => {
+      const layout = await measureNativeView(fiber);
+      if (layout) measured.push({ fiber, layout });
+    })
+  );
+
+  // Hit test — find host fibers containing the touch point
+  const hits = measured.filter(({ layout }) => {
+    const { pageX, pageY, width, height } = layout;
+    return (
+      touchX >= pageX &&
+      touchX <= pageX + width &&
+      touchY >= pageY &&
+      touchY <= pageY + height
+    );
+  });
+
+  if (hits.length === 0) return null;
+
+  // Pick the smallest bounding box (most specific native view)
+  const best = hits.reduce((prev, curr) => {
+    const prevArea = prev.layout.width * prev.layout.height;
+    const currArea = curr.layout.width * curr.layout.height;
+    return currArea < prevArea ? curr : prev;
+  });
+
+  // Extract text content from the tapped element
+  let elementLabel: string | null = null;
+  const hitProps = best.fiber.memoizedProps;
+  if (hitProps?.children && typeof hitProps.children === 'string') {
+    elementLabel = hitProps.children;
+  }
+
+  // Walk up from the hit fiber to find the nearest user component
+  const userComp = findUserComponent(best.fiber);
+  if (!userComp) return null;
+
+  // Resolve styles from the user component's props or the hit host fiber
+  let resolvedStyle: Record<string, unknown> | null = null;
+  const styleProp = userComp.fiber.memoizedProps?.style ?? best.fiber.memoizedProps?.style;
+  if (styleProp) {
+    try {
+      resolvedStyle = StyleSheet.flatten(styleProp) as Record<string, unknown>;
+    } catch { /* ignore */ }
+  }
+
+  // Measure the user component's own host fiber for layout
+  // (walk down from user comp to find its first host child)
+  let compLayout = best.layout;
+  let hostChild: Fiber | null = userComp.fiber;
+  while (hostChild && hostChild.tag !== HOST_COMPONENT) {
+    hostChild = hostChild.child;
+  }
+  if (hostChild && hostChild !== best.fiber) {
+    const layout = await measureNativeView(hostChild);
+    if (layout) compLayout = layout;
+  }
+
   return {
-    name,
-    filePath: source?.fileName ?? null,
-    lineNumber: source?.lineNumber ?? null,
-    props: fiber.memoizedProps,
+    componentName: userComp.name,
+    elementLabel,
+    filePath: userComp.source?.fileName ?? null,
+    lineNumber: userComp.source?.lineNumber ?? null,
+    props: userComp.fiber.memoizedProps,
+    testID: (userComp.fiber.memoizedProps?.testID as string) ?? null,
+    layout: compLayout,
+    style: resolvedStyle,
   };
 }
-
-export { getFiberFromTag, findFiberByTag };

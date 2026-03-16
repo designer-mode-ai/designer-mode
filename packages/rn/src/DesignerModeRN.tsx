@@ -8,31 +8,56 @@ import {
   TextInput,
   ScrollView,
   Pressable,
-  ActivityIndicator,
+  Animated,
   type ViewStyle,
 } from 'react-native';
-import type { RNComponentInfo, DesignerModeRNOptions, ChangesetEntry } from './types.js';
-import { hitTestComponents } from './spatial-index.js';
-import { buildAgentPrompt, sendToRelay, pollForResponse, checkRelayHealth } from './relay-client.js';
+import type { RNComponentInfo, DesignerModeRNOptions, ChangesetEntry } from './types';
+import { hitTestFromFiberTree } from './fiber';
+import { buildAgentPrompt, sendToRelay, pollForResponse, checkRelayHealth } from './relay-client';
 
 interface Props extends DesignerModeRNOptions {
-  /** Refs of all trackable components. Pass from a central registry. */
-  componentRefs: React.RefObject<any>[];
   /** Whether designer mode is active */
   active: boolean;
   onClose: () => void;
 }
 
 type RelayStatus = 'connected' | 'disconnected' | 'checking';
+type ChatMessage = { type: 'sent' | 'agent'; text: string };
 
-export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollInterval = 2000 }: Props) {
+function shortenPath(filePath: string): string {
+  const parts = filePath.split('/');
+  return parts.slice(-2).join('/');
+}
+
+function PulseOrb() {
+  const anim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+
+  return (
+    <Animated.View style={[styles.pulseOrb, { opacity: anim }]} />
+  );
+}
+
+export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 }: Props) {
   const [selected, setSelected] = useState<RNComponentInfo | null>(null);
   const [changeset, setChangeset] = useState<ChangesetEntry[]>([]);
   const [message, setMessage] = useState('');
-  const [agentResponse, setAgentResponse] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [agentWorking, setAgentWorking] = useState(false);
   const [relayStatus, setRelayStatus] = useState<RelayStatus>('checking');
+  const [showFullPath, setShowFullPath] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const prevRelayStatus = useRef<RelayStatus>('checking');
 
   // Check relay health
   useEffect(() => {
@@ -40,7 +65,13 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
     let cancelled = false;
     async function check() {
       const ok = await checkRelayHealth(relayUrl);
-      if (!cancelled) setRelayStatus(ok ? 'connected' : 'disconnected');
+      if (!cancelled) {
+        const next = ok ? 'connected' : 'disconnected';
+        if (next !== prevRelayStatus.current) {
+          prevRelayStatus.current = next;
+          setRelayStatus(next);
+        }
+      }
     }
     check();
     const interval = setInterval(check, 10000);
@@ -48,21 +79,26 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
   }, [active, relayUrl]);
 
   const handleTouch = useCallback(async (touchX: number, touchY: number) => {
-    if (componentRefs.length === 0) return;
-    const info = await hitTestComponents(componentRefs, touchX, touchY);
+    const info = await hitTestFromFiberTree(touchX, touchY);
     if (info) {
       setSelected(info);
       setChangeset([]);
-      setAgentResponse(null);
+      setChatMessages([]);
+      setShowFullPath(false);
     }
-  }, [componentRefs]);
+  }, []);
 
   const sendRequest = useCallback(async () => {
     if (!selected) return;
-    setSending(true);
-    setAgentResponse(null);
 
-    const prompt = buildAgentPrompt(selected, changeset, message);
+    const msg = message.trim();
+    if (!msg && changeset.length === 0) return;
+
+    if (msg) setChatMessages(prev => [...prev, { type: 'sent', text: msg }]);
+    setAgentWorking(true);
+    setMessage('');
+
+    const prompt = buildAgentPrompt(selected, changeset, msg);
 
     try {
       await sendToRelay(relayUrl, prompt);
@@ -71,16 +107,24 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
       abortRef.current = new AbortController();
 
       const response = await pollForResponse(relayUrl, abortRef.current.signal);
-      setAgentResponse(response);
+      if (response) {
+        setChatMessages(prev => [...prev, { type: 'agent', text: response }]);
+      }
     } catch (err) {
-      setAgentResponse(`Error: ${(err as Error).message}`);
+      setChatMessages(prev => [...prev, { type: 'agent', text: `Error: ${(err as Error).message}` }]);
     } finally {
-      setSending(false);
-      setMessage('');
+      setAgentWorking(false);
     }
   }, [selected, changeset, message, relayUrl]);
 
   if (!active) return null;
+
+  const filePathDisplay = selected?.filePath
+    ? `${shortenPath(selected.filePath)}${selected.lineNumber ? `:${selected.lineNumber}` : ''}`
+    : null;
+  const filePathFull = selected?.filePath
+    ? `${selected.filePath}${selected.lineNumber ? `:${selected.lineNumber}` : ''}`
+    : null;
 
   return (
     <Modal transparent animationType="none" visible={active} onRequestClose={onClose}>
@@ -106,9 +150,19 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
           {/* Header */}
           <View style={styles.panelHeader}>
             <View style={styles.headerLeft}>
-              <Text style={styles.componentName}>{selected.componentName}</Text>
-              {selected.filePath && (
-                <Text style={styles.filePath} numberOfLines={1}>{selected.filePath}</Text>
+              <View style={styles.headerTitleRow}>
+                <Text style={styles.componentName}>
+                  {selected.componentName}
+                  {selected.elementLabel ? <Text style={styles.elementLabel}>{' › '}{selected.elementLabel}</Text> : null}
+                </Text>
+                <View style={[styles.relayDot, relayStatus === 'connected' ? styles.relayConnected : styles.relayDisconnected]} />
+              </View>
+              {filePathDisplay && (
+                <Pressable onPress={() => setShowFullPath(p => !p)}>
+                  <Text style={styles.filePath} numberOfLines={showFullPath ? undefined : 1}>
+                    {showFullPath ? filePathFull : filePathDisplay}
+                  </Text>
+                </Pressable>
               )}
             </View>
             <Pressable onPress={() => setSelected(null)} style={styles.closeBtn}>
@@ -122,10 +176,10 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>LAYOUT</Text>
                 {Object.entries({
-                  width: `${selected.layout.width}px`,
-                  height: `${selected.layout.height}px`,
-                  x: `${selected.layout.x}`,
-                  y: `${selected.layout.y}`,
+                  width: `${Math.round(selected.layout.width)}`,
+                  height: `${Math.round(selected.layout.height)}`,
+                  x: `${Math.round(selected.layout.pageX)}`,
+                  y: `${Math.round(selected.layout.pageY)}`,
                 }).map(([key, value]) => (
                   <View key={key} style={styles.row}>
                     <Text style={styles.rowKey}>{key}</Text>
@@ -135,11 +189,11 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
               </View>
             )}
 
-            {/* Props section */}
-            {selected.props && Object.keys(selected.props).length > 0 && (
+            {/* Style section */}
+            {selected.style && Object.keys(selected.style).length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>PROPS</Text>
-                {Object.entries(selected.props).slice(0, 10).map(([key, value]) => (
+                <Text style={styles.sectionTitle}>STYLES</Text>
+                {Object.entries(selected.style).map(([key, value]) => (
                   <View key={key} style={styles.row}>
                     <Text style={styles.rowKey}>{key}</Text>
                     <Text style={styles.rowValue} numberOfLines={1}>
@@ -150,45 +204,71 @@ export function DesignerModeRN({ componentRefs, active, onClose, relayUrl, pollI
               </View>
             )}
 
-            {/* Relay status */}
-            <View style={styles.relaySection}>
-              <View style={[styles.relayDot, relayStatus === 'connected' ? styles.relayConnected : styles.relayDisconnected]} />
-              <Text style={styles.relayText}>
-                {relayStatus === 'connected' ? 'Connected' : relayStatus === 'checking' ? 'Checking...' : 'Disconnected'}
+            {/* Props section */}
+            {selected.props && Object.keys(selected.props).length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>PROPS</Text>
+                {Object.entries(selected.props)
+                  .filter(([key]) => key !== 'style' && key !== 'children')
+                  .slice(0, 10)
+                  .map(([key, value]) => (
+                  <View key={key} style={styles.row}>
+                    <Text style={styles.rowKey}>{key}</Text>
+                    <Text style={styles.rowValue} numberOfLines={1}>
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Chat messages */}
+            {chatMessages.length > 0 && (
+              <View style={styles.chatSection}>
+                {chatMessages.map((msg, i) => (
+                  <View key={i} style={msg.type === 'sent' ? styles.sentBubble : styles.agentBubble}>
+                    <Text style={msg.type === 'sent' ? styles.sentBubbleText : styles.agentBubbleText}>
+                      {msg.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Agent working indicator */}
+            {agentWorking && (
+              <View style={styles.workingRow}>
+                <PulseOrb />
+                <Text style={styles.workingText}>Check your agent for progress and approvals</Text>
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Footer: status + input */}
+          <View style={styles.footer}>
+            <View style={styles.footerStatus}>
+              <Text style={styles.statusText}>
+                {relayStatus === 'connected' ? 'Connected' : relayStatus === 'checking' ? 'Checking...' : 'Not connected'}
               </Text>
             </View>
-
-            {/* Chat */}
-            <View style={styles.chatSection}>
-              {agentResponse && (
-                <View style={styles.agentBubble}>
-                  <Text style={styles.agentBubbleText}>{agentResponse}</Text>
-                </View>
-              )}
-
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={styles.messageInput}
-                  value={message}
-                  onChangeText={setMessage}
-                  placeholder="Type a message..."
-                  placeholderTextColor="#666"
-                  multiline
-                />
-                <Pressable
-                  onPress={sendRequest}
-                  disabled={sending || !selected}
-                  style={[styles.sendBtn, (sending || !selected) && styles.sendBtnDisabled]}
-                >
-                  {sending ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.sendBtnText}>↑</Text>
-                  )}
-                </Pressable>
-              </View>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.messageInput}
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Describe the change..."
+                placeholderTextColor="#666"
+                multiline
+              />
+              <Pressable
+                onPress={sendRequest}
+                disabled={agentWorking || !selected || relayStatus !== 'connected'}
+                style={[styles.sendBtn, (agentWorking || relayStatus !== 'connected') && styles.sendBtnDisabled]}
+              >
+                <Text style={styles.sendBtnText}>↑</Text>
+              </Pressable>
             </View>
-          </ScrollView>
+          </View>
         </View>
       )}
 
@@ -238,7 +318,9 @@ const styles = StyleSheet.create({
     borderBottomColor: '#3a3a3a',
   },
   headerLeft: { flex: 1 },
+  headerTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   componentName: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  elementLabel: { color: '#888', fontWeight: '400' },
   filePath: { color: '#888', fontSize: 11, marginTop: 2 },
   closeBtn: { padding: 4 },
   closeBtnText: { color: '#aaa', fontSize: 20, lineHeight: 20 },
@@ -264,13 +346,6 @@ const styles = StyleSheet.create({
   },
   rowKey: { color: '#aaa', fontSize: 12 },
   rowValue: { color: '#e0e0e0', fontSize: 12, flex: 1, textAlign: 'right' },
-  relaySection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
   relayDot: {
     width: 7,
     height: 7,
@@ -278,15 +353,46 @@ const styles = StyleSheet.create({
   },
   relayConnected: { backgroundColor: '#4caf50' },
   relayDisconnected: { backgroundColor: '#f44336' },
-  relayText: { color: '#888', fontSize: 12 },
-  chatSection: { padding: 14 },
-  agentBubble: {
-    backgroundColor: '#1a3a5c',
+  chatSection: { padding: 14, gap: 8 },
+  sentBubble: {
+    backgroundColor: '#037DD6',
     borderRadius: 8,
     padding: 10,
-    marginBottom: 10,
+    alignSelf: 'flex-end',
+    maxWidth: '85%',
+  },
+  sentBubbleText: { color: '#fff', fontSize: 13 },
+  agentBubble: {
+    backgroundColor: '#3a3a3a',
+    borderRadius: 8,
+    padding: 10,
+    alignSelf: 'flex-start',
+    maxWidth: '85%',
   },
   agentBubbleText: { color: '#e0e0e0', fontSize: 13 },
+  workingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  pulseOrb: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#037DD6',
+  },
+  workingText: { color: '#888', fontSize: 12 },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: '#3a3a3a',
+    padding: 14,
+  },
+  footerStatus: {
+    marginBottom: 8,
+  },
+  statusText: { color: '#888', fontSize: 11 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',

@@ -1,5 +1,7 @@
 export interface RNComponentInfo {
   componentName: string;
+  /** The specific element tapped (e.g. "Heading 2" text inside a Card) */
+  elementLabel: string | null;
   filePath: string | null;
   lineNumber: number | null;
   props: Record<string, unknown> | null;

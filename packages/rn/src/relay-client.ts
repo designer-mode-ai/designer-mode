@@ -1,4 +1,4 @@
-import type { RNComponentInfo, ChangesetEntry, DesignerModeRNOptions } from './types.js';
+import type { RNComponentInfo, ChangesetEntry, DesignerModeRNOptions } from './types';
 
 export function buildAgentPrompt(
   info: RNComponentInfo,
@@ -12,17 +12,23 @@ export function buildAgentPrompt(
     `  Component : ${info.componentName}`,
   ];
 
+  if (info.elementLabel) lines.push(`  Element   : ${info.elementLabel}`);
   if (info.filePath) lines.push(`  File      : ${info.filePath}${info.lineNumber ? `:${info.lineNumber}` : ''}`);
   if (info.testID) lines.push(`  Test ID   : ${info.testID}`);
 
   if (info.layout) {
     lines.push('', 'Layout');
-    lines.push(`  x       : ${info.layout.x}`);
-    lines.push(`  y       : ${info.layout.y}`);
-    lines.push(`  width   : ${info.layout.width}`);
-    lines.push(`  height  : ${info.layout.height}`);
-    lines.push(`  pageX   : ${info.layout.pageX}`);
-    lines.push(`  pageY   : ${info.layout.pageY}`);
+    lines.push(`  width   : ${Math.round(info.layout.width)}`);
+    lines.push(`  height  : ${Math.round(info.layout.height)}`);
+    lines.push(`  x       : ${Math.round(info.layout.pageX)}`);
+    lines.push(`  y       : ${Math.round(info.layout.pageY)}`);
+  }
+
+  if (info.style && Object.keys(info.style).length > 0) {
+    lines.push('', 'Styles');
+    for (const [key, value] of Object.entries(info.style)) {
+      lines.push(`  ${key} : ${typeof value === 'object' ? JSON.stringify(value) : value}`);
+    }
   }
 
   if (changeset.length > 0) {

@@ -1,4 +1,4 @@
-export { DesignerModeRN } from './DesignerModeRN.js';
-export { hitTestComponents, measureRef } from './spatial-index.js';
-export { buildAgentPrompt, sendToRelay, pollForResponse, checkRelayHealth } from './relay-client.js';
-export type { RNComponentInfo, DesignerModeRNOptions, ChangesetEntry } from './types.js';
+export { DesignerModeRN } from './DesignerModeRN';
+export { hitTestFromFiberTree } from './fiber';
+export { buildAgentPrompt, sendToRelay, pollForResponse, checkRelayHealth } from './relay-client';
+export type { RNComponentInfo, DesignerModeRNOptions, ChangesetEntry } from './types';
