@@ -19,6 +19,8 @@ export interface RNComponentInfo {
   } | null;
   // Resolved styles from StyleSheet
   style: Record<string, unknown> | null;
+  /** Names of styles currently applied via style={[styles.foo, styles.bar]} */
+  styleNames: string[];
 }
 
 export interface DesignerModeRNOptions {

@@ -69,13 +69,100 @@ function Section({ icon, title, defaultOpen = true, children }: {
   );
 }
 
-/* ── Property Row ── */
-function PropRow({ label, value, mono = true, half = false }: { label: string; value: string; mono?: boolean; half?: boolean }) {
+/* ── Editable Property Row ── */
+function PropRow({ label, value, mono = true, half = false, onEdit, swatchColor }: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  half?: boolean;
+  onEdit?: (newValue: string) => void;
+  swatchColor?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+
+  if (editing && onEdit) {
+    return (
+      <View style={[s.propRow, half && s.propRowHalf]}>
+        {label ? <Text style={s.propLabel} numberOfLines={1}>{label}</Text> : null}
+        <TextInput
+          style={[s.propEditInput, mono && s.mono]}
+          value={editValue}
+          onChangeText={setEditValue}
+          onBlur={() => {
+            setEditing(false);
+            if (editValue !== value) onEdit(editValue);
+          }}
+          onSubmitEditing={() => {
+            setEditing(false);
+            if (editValue !== value) onEdit(editValue);
+          }}
+          autoFocus
+          selectTextOnFocus
+        />
+      </View>
+    );
+  }
+
   return (
-    <View style={[s.propRow, half && s.propRowHalf]}>
-      <Text style={s.propLabel} numberOfLines={1}>{label}</Text>
-      <Text style={[s.propValue, mono && s.mono]} numberOfLines={1}>{value}</Text>
+    <Pressable
+      style={[s.propRow, half && s.propRowHalf]}
+      onPress={onEdit ? () => { setEditValue(value); setEditing(true); } : undefined}
+      disabled={!onEdit}
+    >
+      {label ? <Text style={s.propLabel} numberOfLines={1}>{label}</Text> : null}
+      <View style={s.propValueRow}>
+        {swatchColor && <ColorSwatch color={swatchColor} />}
+        <Text style={[s.propValue, mono && s.mono, onEdit && s.propValueEditable]} numberOfLines={1}>{value}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+/* ── Style Name Pill ── */
+function StyleNamePill({ name, onRemove }: { name: string; onRemove?: () => void }) {
+  return (
+    <View style={s.styleNamePill}>
+      <Text style={s.styleNamePillText}>{name}</Text>
+      {onRemove && (
+        <Pressable onPress={onRemove} hitSlop={4}>
+          <Text style={s.styleNamePillRemove}>{'\u00D7'}</Text>
+        </Pressable>
+      )}
     </View>
+  );
+}
+
+/* ── Add Style Name Input ── */
+function AddStyleNameInput({ onAdd }: { onAdd: (name: string) => void }) {
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+
+  if (!adding) {
+    return (
+      <Pressable onPress={() => setAdding(true)} style={s.addStyleNameBtn}>
+        <Text style={s.addStyleNameBtnText}>+ Add</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <TextInput
+      style={s.addStyleNameInput}
+      value={name}
+      onChangeText={setName}
+      placeholder="styleName"
+      placeholderTextColor={C.textTertiary}
+      autoFocus
+      onBlur={() => { setAdding(false); setName(''); }}
+      onSubmitEditing={() => {
+        if (name.trim()) {
+          onAdd(name.trim());
+          setName('');
+          setAdding(false);
+        }
+      }}
+    />
   );
 }
 
@@ -143,7 +230,9 @@ function isColorValue(value: string): boolean {
 /* ── Main Component ── */
 export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 }: Props) {
   const [selected, setSelected] = useState<RNComponentInfo | null>(null);
-  const [changeset, setChangeset] = useState<ChangesetEntry[]>([]);
+  const [edits, setEdits] = useState<Record<string, { original: string; current: string }>>({});
+  const [addedStyleNames, setAddedStyleNames] = useState<string[]>([]);
+  const [removedStyleNames, setRemovedStyleNames] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [agentWorking, setAgentWorking] = useState(false);
@@ -193,7 +282,9 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
   useEffect(() => {
     if (active) {
       setSelected(null);
-      setChangeset([]);
+      setEdits({});
+      setAddedStyleNames([]);
+      setRemovedStyleNames([]);
       setChatMessages([]);
       setMessage('');
       setAgentWorking(false);
@@ -221,11 +312,30 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
     return () => { cancelled = true; clearInterval(interval); };
   }, [active, relayUrl]);
 
+  const recordEdit = useCallback((property: string, original: string, newValue: string) => {
+    setEdits(prev => {
+      if (newValue === original) {
+        const next = { ...prev };
+        delete next[property];
+        return next;
+      }
+      return { ...prev, [property]: { original, current: newValue } };
+    });
+  }, []);
+
+  const changeset: ChangesetEntry[] = [
+    ...Object.entries(edits).map(([property, { original, current }]) => ({ property, original, current })),
+    ...addedStyleNames.map(name => ({ property: `style:add(${name})`, original: '(none)', current: name })),
+    ...removedStyleNames.map(name => ({ property: `style:remove(${name})`, original: name, current: '(removed)' })),
+  ];
+
   const handleTouch = useCallback(async (touchX: number, touchY: number) => {
     const info = await hitTestFromFiberTree(touchX, touchY);
     if (info) {
       setSelected(info);
-      setChangeset([]);
+      setEdits({});
+      setAddedStyleNames([]);
+      setRemovedStyleNames([]);
       setChatMessages([]);
       setShowFullPath(false);
     }
@@ -254,7 +364,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
     } finally {
       setAgentWorking(false);
     }
-  }, [selected, changeset, message, relayUrl]);
+  }, [selected, changeset, message, relayUrl, edits]);
 
   if (!active) return null;
 
@@ -336,10 +446,16 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* Text Content section — first, like web */}
+            {/* Text Content section — editable, like web */}
             {selected.textContent != null && (
               <Section icon={'\u270F'} title="Text Content">
-                <Text style={s.textContentValue}>{selected.textContent}</Text>
+                <TextInput
+                  style={s.textContentInput}
+                  defaultValue={edits['__textContent']?.current ?? selected.textContent}
+                  onChangeText={(val) => recordEdit('__textContent', selected.textContent!, val)}
+                  multiline
+                  placeholderTextColor={C.textTertiary}
+                />
               </Section>
             )}
 
@@ -355,7 +471,8 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
                 {categories?.layout && categories.layout.length > 0 && (
                   <View style={[s.twoCol, { marginTop: 6 }]}>
                     {categories.layout.map(([key, val]) => (
-                      <PropRow half key={key} label={key} value={val} />
+                      <PropRow half key={key} label={key} value={edits[key]?.current ?? val}
+                        onEdit={(v) => recordEdit(key, val, v)} />
                     ))}
                   </View>
                 )}
@@ -365,39 +482,71 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             {/* Spacing section */}
             {categories?.spacing && categories.spacing.length > 0 && (
               <Section icon={'\u2B1C'} title="Spacing">
-                {renderSpacingCross(categories.spacing)}
+                {renderSpacingCross(categories.spacing, edits, recordEdit)}
               </Section>
             )}
 
             {/* Typography section */}
             {categories?.typography && categories.typography.length > 0 && (
               <Section icon="T" title="Typography">
-                {categories.typography.map(([key, val]) => (
-                  <View key={key} style={s.propRow}>
-                    <Text style={s.propLabel} numberOfLines={1}>{key}</Text>
-                    <View style={s.propValueRow}>
-                      {key === 'color' && isColorValue(val) && <ColorSwatch color={val} />}
-                      <Text style={[s.propValue, s.mono]} numberOfLines={1}>{val}</Text>
-                    </View>
-                  </View>
-                ))}
+                {categories.typography.map(([key, val]) => {
+                  const displayVal = edits[key]?.current ?? val;
+                  const swatch = key === 'color' && isColorValue(displayVal) ? displayVal : undefined;
+                  return (
+                    <PropRow key={key} label={key} value={displayVal}
+                      swatchColor={swatch}
+                      onEdit={(v) => recordEdit(key, val, v)} />
+                  );
+                })}
               </Section>
             )}
 
             {/* Fill & Stroke section */}
             {categories?.fillStroke && categories.fillStroke.length > 0 && (
               <Section icon={'\u25C9'} title="Fill & Stroke">
-                {categories.fillStroke.map(([key, val]) => (
-                  <View key={key} style={s.propRow}>
-                    <Text style={s.propLabel} numberOfLines={1}>{key}</Text>
-                    <View style={s.propValueRow}>
-                      {isColorValue(val) && <ColorSwatch color={val} />}
-                      <Text style={[s.propValue, s.mono]} numberOfLines={1}>{val}</Text>
-                    </View>
-                  </View>
-                ))}
+                {categories.fillStroke.map(([key, val]) => {
+                  const displayVal = edits[key]?.current ?? val;
+                  const swatch = isColorValue(displayVal) ? displayVal : undefined;
+                  return (
+                    <PropRow key={key} label={key} value={displayVal}
+                      swatchColor={swatch}
+                      onEdit={(v) => recordEdit(key, val, v)} />
+                  );
+                })}
               </Section>
             )}
+
+            {/* Style Names section — add/remove from style array */}
+            <Section icon={'\u2702'} title="Style Names">
+              <View style={s.styleNamesWrap}>
+                {selected.styleNames
+                  .filter(name => !removedStyleNames.includes(name))
+                  .map((name, i) => (
+                    <StyleNamePill
+                      key={`cur-${name}-${i}`}
+                      name={name}
+                      onRemove={() => setRemovedStyleNames(prev => [...prev, name])}
+                    />
+                  ))}
+                {removedStyleNames.map((name, i) => (
+                  <View key={`rm-${name}-${i}`} style={s.styleNamePillRemoved}>
+                    <Text style={s.styleNamePillRemovedText}>{name}</Text>
+                    <Pressable onPress={() => setRemovedStyleNames(prev => prev.filter((_, idx) => idx !== i))} hitSlop={4}>
+                      <Text style={s.styleNamePillUndoText}>undo</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                {addedStyleNames.map((name, i) => (
+                  <View key={`add-${name}-${i}`} style={s.styleNamePillAdded}>
+                    <Text style={s.styleNamePillAddedText}>{name}</Text>
+                    <Pressable onPress={() => setAddedStyleNames(prev => prev.filter((_, idx) => idx !== i))} hitSlop={4}>
+                      <Text style={s.styleNamePillRemove}>{'\u00D7'}</Text>
+                    </Pressable>
+                  </View>
+                ))}
+                <AddStyleNameInput onAdd={(name) => setAddedStyleNames(prev => [...prev, name])} />
+              </View>
+            </Section>
 
             {/* Component section */}
             <Section icon={'\u269B'} title="Component">
@@ -475,6 +624,18 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
               </View>
             </View>
 
+            {/* Pending edits banner */}
+            {changeset.length > 0 && (
+              <View style={s.editsBanner}>
+                <Text style={s.editsBannerText} numberOfLines={1}>
+                  {changeset.length} pending edit{changeset.length > 1 ? 's' : ''}: {changeset.slice(0, 2).map(e => `${e.property}`).join(', ')}{changeset.length > 2 ? ` +${changeset.length - 2}` : ''}
+                </Text>
+                <Pressable onPress={() => sendRequest()} style={s.applyBtn}>
+                  <Text style={s.applyBtnText}>Apply</Text>
+                </Pressable>
+              </View>
+            )}
+
             {/* Composer */}
             <View style={s.composer}>
               <View style={s.composerWrap}>
@@ -514,22 +675,79 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 }
 
 /* ── Spacing Cross Editor ── */
-function renderSpacingCross(spacingProps: [string, string][]) {
+/* ── Editable spacing value ── */
+function SpacingVal({ value, color, prop, original, onEdit }: {
+  value: string;
+  color: string;
+  prop: string;
+  original: string;
+  onEdit: (property: string, original: string, newValue: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState(value);
+
+  if (editing) {
+    return (
+      <TextInput
+        style={[s.spacingValInput, { color }]}
+        value={editVal}
+        onChangeText={setEditVal}
+        onBlur={() => {
+          setEditing(false);
+          if (editVal !== value) onEdit(prop, original, editVal);
+        }}
+        onSubmitEditing={() => {
+          setEditing(false);
+          if (editVal !== value) onEdit(prop, original, editVal);
+        }}
+        autoFocus
+        selectTextOnFocus
+        keyboardType="numeric"
+      />
+    );
+  }
+
+  return (
+    <Pressable onPress={() => { setEditVal(value); setEditing(true); }}>
+      <Text style={[s.spacingVal, { color }]}>{value}</Text>
+    </Pressable>
+  );
+}
+
+function renderSpacingCross(
+  spacingProps: [string, string][],
+  edits: Record<string, { original: string; current: string }>,
+  recordEdit: (property: string, original: string, newValue: string) => void,
+) {
   const vals: Record<string, string> = {};
   for (const [key, val] of spacingProps) vals[key] = val;
 
-  const marginTop = vals.marginTop ?? vals.marginVertical ?? vals.margin ?? '-';
-  const marginRight = vals.marginRight ?? vals.marginHorizontal ?? vals.margin ?? '-';
-  const marginBottom = vals.marginBottom ?? vals.marginVertical ?? vals.margin ?? '-';
-  const marginLeft = vals.marginLeft ?? vals.marginHorizontal ?? vals.margin ?? '-';
+  // Resolve values with edits applied
+  const get = (key: string, ...fallbacks: string[]) => {
+    if (edits[key]) return edits[key].current;
+    if (vals[key]) return vals[key];
+    for (const fb of fallbacks) {
+      if (edits[fb]) return edits[fb].current;
+      if (vals[fb]) return vals[fb];
+    }
+    return '-';
+  };
 
-  const paddingTop = vals.paddingTop ?? vals.paddingVertical ?? vals.padding ?? '-';
-  const paddingRight = vals.paddingRight ?? vals.paddingHorizontal ?? vals.padding ?? '-';
-  const paddingBottom = vals.paddingBottom ?? vals.paddingVertical ?? vals.padding ?? '-';
-  const paddingLeft = vals.paddingLeft ?? vals.paddingHorizontal ?? vals.padding ?? '-';
+  const marginTop = get('marginTop', 'marginVertical', 'margin');
+  const marginRight = get('marginRight', 'marginHorizontal', 'margin');
+  const marginBottom = get('marginBottom', 'marginVertical', 'margin');
+  const marginLeft = get('marginLeft', 'marginHorizontal', 'margin');
+
+  const paddingTop = get('paddingTop', 'paddingVertical', 'padding');
+  const paddingRight = get('paddingRight', 'paddingHorizontal', 'padding');
+  const paddingBottom = get('paddingBottom', 'paddingVertical', 'padding');
+  const paddingLeft = get('paddingLeft', 'paddingHorizontal', 'padding');
 
   const hasMargin = [marginTop, marginRight, marginBottom, marginLeft].some(v => v !== '-');
   const hasPadding = [paddingTop, paddingRight, paddingBottom, paddingLeft].some(v => v !== '-');
+
+  const marginOrig = (key: string) => vals[key] ?? vals.marginVertical ?? vals.marginHorizontal ?? vals.margin ?? '-';
+  const paddingOrig = (key: string) => vals[key] ?? vals.paddingVertical ?? vals.paddingHorizontal ?? vals.padding ?? '-';
 
   return (
     <View>
@@ -537,13 +755,13 @@ function renderSpacingCross(spacingProps: [string, string][]) {
         <View style={s.spacingEditor}>
           <Text style={[s.spacingLabel, { color: C.accent }]}>Margin</Text>
           <View style={s.spacingCrossWrap}>
-            <Text style={[s.spacingVal, { color: C.accent }]}>{marginTop}</Text>
+            <SpacingVal value={marginTop} color={C.accent} prop="marginTop" original={marginOrig('marginTop')} onEdit={recordEdit} />
             <View style={s.spacingMidRow}>
-              <Text style={[s.spacingVal, { color: C.accent }]}>{marginLeft}</Text>
+              <SpacingVal value={marginLeft} color={C.accent} prop="marginLeft" original={marginOrig('marginLeft')} onEdit={recordEdit} />
               <View style={[s.spacingCenter, { backgroundColor: C.accentDim }]} />
-              <Text style={[s.spacingVal, { color: C.accent }]}>{marginRight}</Text>
+              <SpacingVal value={marginRight} color={C.accent} prop="marginRight" original={marginOrig('marginRight')} onEdit={recordEdit} />
             </View>
-            <Text style={[s.spacingVal, { color: C.accent }]}>{marginBottom}</Text>
+            <SpacingVal value={marginBottom} color={C.accent} prop="marginBottom" original={marginOrig('marginBottom')} onEdit={recordEdit} />
           </View>
         </View>
       )}
@@ -551,13 +769,13 @@ function renderSpacingCross(spacingProps: [string, string][]) {
         <View style={s.spacingEditor}>
           <Text style={[s.spacingLabel, { color: C.success }]}>Padding</Text>
           <View style={s.spacingCrossWrap}>
-            <Text style={[s.spacingVal, { color: C.success }]}>{paddingTop}</Text>
+            <SpacingVal value={paddingTop} color={C.success} prop="paddingTop" original={paddingOrig('paddingTop')} onEdit={recordEdit} />
             <View style={s.spacingMidRow}>
-              <Text style={[s.spacingVal, { color: C.success }]}>{paddingLeft}</Text>
+              <SpacingVal value={paddingLeft} color={C.success} prop="paddingLeft" original={paddingOrig('paddingLeft')} onEdit={recordEdit} />
               <View style={[s.spacingCenter, { backgroundColor: 'rgba(48, 209, 88, 0.15)' }]} />
-              <Text style={[s.spacingVal, { color: C.success }]}>{paddingRight}</Text>
+              <SpacingVal value={paddingRight} color={C.success} prop="paddingRight" original={paddingOrig('paddingRight')} onEdit={recordEdit} />
             </View>
-            <Text style={[s.spacingVal, { color: C.success }]}>{paddingBottom}</Text>
+            <SpacingVal value={paddingBottom} color={C.success} prop="paddingBottom" original={paddingOrig('paddingBottom')} onEdit={recordEdit} />
           </View>
         </View>
       )}
@@ -786,6 +1004,23 @@ const s = StyleSheet.create({
     fontSize: 11,
     color: C.text,
   } as TextStyle,
+  propValueEditable: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderStyle: 'dashed',
+  } as TextStyle,
+  propEditInput: {
+    flex: 1,
+    fontSize: 11,
+    color: C.text,
+    backgroundColor: C.input,
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minHeight: 22,
+  } as TextStyle,
   propValueRow: {
     flex: 1,
     flexDirection: 'row',
@@ -794,6 +1029,93 @@ const s = StyleSheet.create({
   },
   mono: {
     fontFamily: 'Menlo',
+  } as TextStyle,
+
+  // Style names
+  styleNamesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    alignItems: 'center',
+  },
+  styleNamePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: C.accentDim,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  styleNamePillText: {
+    fontSize: 10,
+    fontFamily: 'Menlo',
+    color: C.accent,
+    fontWeight: '500',
+  } as TextStyle,
+  styleNamePillRemove: {
+    fontSize: 12,
+    color: C.accent,
+    lineHeight: 14,
+  } as TextStyle,
+  styleNamePillRemoved: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  styleNamePillRemovedText: {
+    fontSize: 10,
+    fontFamily: 'Menlo',
+    color: C.error,
+    fontWeight: '500',
+    textDecorationLine: 'line-through',
+  } as TextStyle,
+  styleNamePillUndoText: {
+    fontSize: 9,
+    color: C.error,
+  } as TextStyle,
+  styleNamePillAdded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(48, 209, 88, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  styleNamePillAddedText: {
+    fontSize: 10,
+    fontFamily: 'Menlo',
+    color: C.success,
+    fontWeight: '500',
+  } as TextStyle,
+  addStyleNameBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: C.divider,
+    borderStyle: 'dashed',
+  } as ViewStyle,
+  addStyleNameBtnText: {
+    fontSize: 10,
+    color: C.textTertiary,
+  } as TextStyle,
+  addStyleNameInput: {
+    fontSize: 10,
+    fontFamily: 'Menlo',
+    color: C.text,
+    backgroundColor: C.input,
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    minWidth: 80,
   } as TextStyle,
 
   // Two-column grid
@@ -811,11 +1133,19 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.2)',
   },
 
-  // Text content
-  textContentValue: {
+  // Text content (editable)
+  textContentInput: {
     fontSize: 13,
     color: C.text,
     lineHeight: 18,
+    backgroundColor: C.input,
+    borderWidth: 1,
+    borderColor: C.divider,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minHeight: 40,
+    textAlignVertical: 'top',
   } as TextStyle,
 
   // Props JSON
@@ -870,6 +1200,22 @@ const s = StyleSheet.create({
     textAlign: 'center',
     fontSize: 10,
     fontFamily: 'Menlo',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderStyle: 'dashed',
+    paddingVertical: 2,
+  } as TextStyle,
+  spacingValInput: {
+    width: 48,
+    textAlign: 'center',
+    fontSize: 10,
+    fontFamily: 'Menlo',
+    backgroundColor: C.input,
+    borderWidth: 1,
+    borderColor: C.accent,
+    borderRadius: 3,
+    paddingVertical: 2,
+    paddingHorizontal: 2,
   } as TextStyle,
 
   // Message thread
@@ -928,6 +1274,32 @@ const s = StyleSheet.create({
   agentWorkingText: {
     color: C.textTertiary,
     fontSize: 10,
+  } as TextStyle,
+
+  // Edits banner
+  editsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 165, 0, 0.12)',
+  },
+  editsBannerText: {
+    flex: 1,
+    fontSize: 10,
+    color: '#ffb347',
+  } as TextStyle,
+  applyBtn: {
+    backgroundColor: '#ffb347',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  applyBtnText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#1a1a1a',
   } as TextStyle,
 
   // Footer

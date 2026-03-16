@@ -4,6 +4,58 @@
 import { findNodeHandle, UIManager, StyleSheet } from 'react-native';
 import type { RNComponentInfo } from './types';
 
+/* ── Style Name Registry ──
+ * Patches StyleSheet.create to build a reverse map from style ref → name.
+ * Must be imported before app styles are created for full coverage.
+ */
+const styleIdToName = new Map<number, string>();
+const styleObjToName = new WeakMap<object, string>();
+
+const _originalCreate = StyleSheet.create;
+(StyleSheet as any).create = function patchedCreate<T extends StyleSheet.NamedStyles<T>>(styles: T): T {
+  const result = _originalCreate(styles);
+  for (const [name, value] of Object.entries(result)) {
+    if (typeof value === 'number') {
+      // Production: StyleSheet.create returns numeric IDs
+      styleIdToName.set(value, name);
+    } else if (typeof value === 'object' && value !== null) {
+      // Dev mode: StyleSheet.create returns the objects as-is
+      styleObjToName.set(value as object, name);
+    }
+  }
+  return result;
+};
+
+/** Resolve a single style entry (from the raw style prop) to its name. */
+export function resolveStyleName(entry: unknown): string | null {
+  if (typeof entry === 'number') {
+    return styleIdToName.get(entry) ?? null;
+  }
+  if (typeof entry === 'object' && entry !== null) {
+    return styleObjToName.get(entry) ?? null;
+  }
+  return null;
+}
+
+/** Extract all style names from a raw style prop (single or array). */
+function extractStyleNames(rawStyle: unknown): string[] {
+  const names: string[] = [];
+  if (rawStyle == null) return names;
+
+  const entries = Array.isArray(rawStyle) ? rawStyle : [rawStyle];
+  for (const entry of entries) {
+    if (entry == null || typeof entry === 'boolean') continue;
+    // Recurse for nested arrays like style={[styles.a, [styles.b, styles.c]]}
+    if (Array.isArray(entry)) {
+      names.push(...extractStyleNames(entry));
+      continue;
+    }
+    const name = resolveStyleName(entry);
+    if (name) names.push(name);
+  }
+  return names;
+}
+
 interface Fiber {
   type: any;
   memoizedProps: Record<string, any> | null;
@@ -128,17 +180,17 @@ function findUserComponent(hostFiber: Fiber): { name: string; fiber: Fiber; sour
 /**
  * Find the nearest named component (including builtins like Text, View).
  */
-function findDirectComponent(hostFiber: Fiber): string | null {
+function findDirectComponent(hostFiber: Fiber): { name: string; source: { fileName: string; lineNumber: number } | null } | null {
   let current: Fiber | null = hostFiber;
   while (current) {
     try {
       // Check for string type (host components like "RCTText" → "Text")
       if (typeof current.type === 'string') {
         const name = current.type.replace(/^RCT/, '');
-        if (name) return name;
+        if (name) return { name, source: current._debugSource ?? null };
       }
       const name = getComponentName(current.type);
-      if (name) return name;
+      if (name) return { name, source: current._debugSource ?? null };
     } catch { /* skip */ }
     current = current.return;
   }
@@ -247,15 +299,15 @@ export async function hitTestFromFiberTree(
   }
 
   // Find direct component (e.g. Text, View) and user component (e.g. Card)
-  const directName = findDirectComponent(best.fiber);
+  const directComp = findDirectComponent(best.fiber);
   const userComp = findUserComponent(best.fiber);
-  if (!userComp && !directName) return null;
+  if (!userComp && !directComp) return null;
 
   // Use the direct component name as primary, user component as parent context
-  const componentName = directName ?? userComp?.name ?? 'Unknown';
-  const parentComponent = userComp && userComp.name !== directName ? userComp.name : null;
+  const componentName = directComp?.name ?? userComp?.name ?? 'Unknown';
+  const parentComponent = userComp && userComp.name !== directComp?.name ? userComp.name : null;
 
-  // Resolve styles — prefer the hit fiber's styles (what the user actually tapped)
+  // Resolve styles — always from the direct (hit) fiber
   let resolvedStyle: Record<string, unknown> | null = null;
   const styleProp = best.fiber.memoizedProps?.style ?? userComp?.fiber.memoizedProps?.style;
   if (styleProp) {
@@ -263,6 +315,9 @@ export async function hitTestFromFiberTree(
       resolvedStyle = StyleSheet.flatten(styleProp) as Record<string, unknown>;
     } catch { /* ignore */ }
   }
+
+  // Extract style names from raw style prop
+  const styleNames = extractStyleNames(styleProp);
 
   // Measure layout
   let compLayout = best.layout;
@@ -277,15 +332,19 @@ export async function hitTestFromFiberTree(
     }
   }
 
+  // File path: prefer direct component source, fall back to user component
+  const source = directComp?.source ?? userComp?.source ?? null;
+
   return {
     componentName,
     parentComponent,
     textContent,
-    filePath: userComp?.source?.fileName ?? null,
-    lineNumber: userComp?.source?.lineNumber ?? null,
+    filePath: source?.fileName ?? null,
+    lineNumber: source?.lineNumber ?? null,
     props: best.fiber.memoizedProps,
     testID: (userComp?.fiber.memoizedProps?.testID as string) ?? null,
     layout: compLayout,
     style: resolvedStyle,
+    styleNames,
   };
 }

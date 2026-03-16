@@ -33,9 +33,25 @@ export function buildAgentPrompt(
   }
 
   if (changeset.length > 0) {
-    lines.push('', 'Changeset (inline edits)');
-    for (const entry of changeset) {
-      lines.push(`  ${entry.property} : ${entry.original} → ${entry.current}`);
+    const styleNameChanges = changeset.filter(e => e.property.startsWith('style:'));
+    const propChanges = changeset.filter(e => !e.property.startsWith('style:'));
+
+    if (propChanges.length > 0) {
+      lines.push('', 'Changeset (inline edits)');
+      for (const entry of propChanges) {
+        lines.push(`  ${entry.property} : ${entry.original} → ${entry.current}`);
+      }
+    }
+
+    if (styleNameChanges.length > 0) {
+      lines.push('', 'Style Name Changes (modify the component\'s style={[...]} array)');
+      for (const entry of styleNameChanges) {
+        if (entry.property.startsWith('style:add')) {
+          lines.push(`  ADD    : styles.${entry.current}`);
+        } else {
+          lines.push(`  REMOVE : styles.${entry.original}`);
+        }
+      }
     }
   }
 
