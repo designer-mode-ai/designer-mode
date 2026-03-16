@@ -151,6 +151,18 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
   const prevRelayStatus = useRef<RelayStatus>('checking');
   const scrollRef = useRef<ScrollView>(null);
 
+  // Reset state when designer mode is activated
+  useEffect(() => {
+    if (active) {
+      setSelected(null);
+      setChangeset([]);
+      setChatMessages([]);
+      setMessage('');
+      setAgentWorking(false);
+      setShowFullPath(false);
+    }
+  }, [active]);
+
   // Check relay health
   useEffect(() => {
     if (!active) return;
@@ -237,7 +249,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             <Text style={s.headerTitle}>Designer Mode</Text>
             <View style={s.headerActions}>
               <Pressable onPress={() => setSelected(null)} style={s.iconBtn}>
-                <Text style={s.iconBtnText}>{'\u25A1'}</Text>
+                <Text style={s.iconBtnText}>{'\u2190'}</Text>
               </Pressable>
               <Pressable onPress={onClose} style={s.iconBtn}>
                 <Text style={s.iconBtnText}>{'\u00D7'}</Text>
