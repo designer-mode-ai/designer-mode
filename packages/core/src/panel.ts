@@ -287,13 +287,13 @@ const PANEL_CSS = css`
     flex: 1; position: relative;
   }
   .chat-input {
-    width: 100%; background: ${C.input}; color: ${C.text}; border: 1px solid ${C.divider};
-    border-radius: 8px; padding: 8px 36px 8px 10px; font-size: 11px; font-family: ${F};
+    width: 100%; box-sizing: border-box; background: ${C.input}; color: ${C.text}; border: 1px solid ${C.divider};
+    border-radius: 8px; padding: 8px 40px 8px 10px; font-size: 11px; font-family: ${F};
     outline: none; resize: none; min-height: 36px;
   }
   .chat-input:focus { border-color: ${C.inputFocus}; }
   .send-btn {
-    position: absolute; right: 4px; bottom: 4px;
+    position: absolute; right: 5px; bottom: 7px;
     background: ${C.accent}; color: #fff; border: none; border-radius: 6px;
     width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 14px; font-weight: 700;
@@ -1046,11 +1046,16 @@ export class PanelController {
     const dot = document.createElement('span');
     dot.className = `status-dot ${this.relayStatus}`;
 
+    const statusLabel = document.createElement('span');
+    statusLabel.style.cssText = `font-size:10px;color:${this.relayStatus === 'connected' ? C.success : C.textTertiary};`;
+    statusLabel.textContent = this.relayStatus === 'connected' ? 'Connected' : 'Not connected';
+
     const compPill = document.createElement('span');
     compPill.className = 'component-pill';
     compPill.textContent = this.info?.componentName ?? 'No selection';
 
     topBar.appendChild(dot);
+    topBar.appendChild(statusLabel);
     topBar.appendChild(compPill);
     footer.appendChild(topBar);
 
