@@ -678,8 +678,11 @@ export class PanelController {
     if (this.info?.filePath) {
       const fp = document.createElement('div');
       fp.className = 'el-filepath';
-      fp.textContent = `${this.info.filePath}${this.info.lineNumber ? `:${this.info.lineNumber}` : ''}`;
-      fp.title = fp.textContent;
+      const parts = this.info.filePath.split('/');
+      const short = parts.slice(-2).join('/');
+      const full = `${this.info.filePath}${this.info.lineNumber ? `:${this.info.lineNumber}` : ''}`;
+      fp.textContent = `${short}${this.info.lineNumber ? `:${this.info.lineNumber}` : ''}`;
+      fp.title = full;
       el.appendChild(fp);
     }
 
@@ -946,7 +949,7 @@ export class PanelController {
         ['Name', this.info!.componentName],
         ['Test ID', this.info!.testId ?? '—'],
         ['File', this.info!.filePath
-          ? `${this.info!.filePath.split('/').pop() ?? ''}${this.info!.lineNumber ? `:${this.info!.lineNumber}` : ''}`
+          ? `${this.info!.filePath.split('/').slice(-2).join('/')}${this.info!.lineNumber ? `:${this.info!.lineNumber}` : ''}`
           : '—'],
       ];
 
@@ -955,6 +958,9 @@ export class PanelController {
         row.className = 'prop-row';
         const l = document.createElement('span'); l.className = 'prop-label'; l.textContent = label;
         const v = document.createElement('span'); v.className = 'readonly'; v.textContent = val;
+        if (label === 'File' && this.info!.filePath) {
+          v.title = `${this.info!.filePath}${this.info!.lineNumber ? `:${this.info!.lineNumber}` : ''}`;
+        }
         row.appendChild(l); row.appendChild(v);
         body.appendChild(row);
       }
@@ -1131,7 +1137,7 @@ export class PanelController {
       const orb = document.createElement('span');
       orb.className = 'pulse-orb';
       const txt = document.createElement('span');
-      txt.textContent = 'Agent is thinking...';
+      txt.textContent = 'Check your agent for progress and approvals';
       working.appendChild(orb);
       working.appendChild(txt);
       footer.appendChild(working);
