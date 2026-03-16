@@ -12,6 +12,6 @@
   },
   "devDependencies": {
     "vite": "^5.4.0",
-    "vite-plugin-designer-mode": "workspace:*"
+    "@designer-mode/vite-plugin": "workspace:*"
   }
 }

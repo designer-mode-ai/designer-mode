@@ -1,4 +1,4 @@
-// Vanilla app — Designer Mode is auto-injected by vite-plugin-designer-mode
+// Vanilla app — Designer Mode is auto-injected by @designer-mode/vite-plugin
 // No setup needed in your app code when using the Vite plugin.
 
 // To manually initialize without the plugin:

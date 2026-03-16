@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import designerMode from 'vite-plugin-designer-mode';
+import designerMode from '@designer-mode/vite-plugin';
 
 export default defineConfig({
   plugins: [

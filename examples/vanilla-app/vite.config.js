@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import designerMode from 'vite-plugin-designer-mode';
+import designerMode from '@designer-mode/vite-plugin';
 
 export default defineConfig({
   plugins: [

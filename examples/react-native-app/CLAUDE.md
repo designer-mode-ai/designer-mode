@@ -15,7 +15,7 @@ This is an Expo React Native app for testing Designer Mode.
 
 - `App.tsx` — Main app with FAB to toggle Designer Mode
 - `components/` — Card, PrimaryButton, ColorSwatch — sample components to inspect
-- `designer-mode-rn` — The inspector panel (from `packages/rn`)
+- `@designer-mode/react-native` — The inspector panel (from `packages/react-native`)
 - MCP server — Runs the relay + exposes `wait_for_design_request` / `send_design_response` tools
 
 ## Key files to modify

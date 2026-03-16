@@ -1,5 +1,5 @@
 {
-  "name": "designer-mode-rn",
+  "name": "@designer-mode/react-native",
   "version": "0.1.0",
   "description": "Designer Mode for React Native — AI-powered UI inspector",
   "main": "./src/index.ts",

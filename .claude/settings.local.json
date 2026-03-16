@@ -4,7 +4,9 @@
       "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode && pnpm install)",
       "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode/examples/vanilla-app && pnpm dev)",
       "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode/packages/designer-mode && pnpm build)",
-      "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode && node packages/server/bin/wait.js)"
+      "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode && node packages/server/bin/wait.js)",
+      "Bash(cd /Users/andrepimenta/Documents/coding/designer-mode/packages/core && npx tsup 2>&1 | tail -5)",
+      "Bash(npx agent-device:*)"
     ]
   }
 }

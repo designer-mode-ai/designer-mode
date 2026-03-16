@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import Constants from 'expo-constants';
-import { DesignerModeRN } from 'designer-mode-rn';
+import { DesignerModeRN } from '@designer-mode/react-native';
 import Card from './components/Card';
 import PrimaryButton from './components/PrimaryButton';
 import ColorSwatch from './components/ColorSwatch';

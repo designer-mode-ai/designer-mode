@@ -39,7 +39,7 @@ export default function designerModePlugin(options: DesignerModePluginOptions = 
   let server: ViteDevServer | undefined;
 
   return {
-    name: 'vite-plugin-designer-mode',
+    name: '@designer-mode/vite-plugin',
     apply: 'serve', // only in dev mode
 
     configureServer(s) {

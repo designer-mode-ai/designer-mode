@@ -1,5 +1,5 @@
 {
-  "name": "designer-mode-webpack-plugin",
+  "name": "@designer-mode/webpack-plugin",
   "version": "0.1.0",
   "description": "Webpack plugin for Designer Mode — injects framework inspector in dev mode",
   "type": "module",

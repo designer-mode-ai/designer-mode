@@ -1,5 +1,5 @@
 {
-  "name": "vite-plugin-designer-mode",
+  "name": "@designer-mode/vite-plugin",
   "version": "0.1.0",
   "description": "Vite plugin for Designer Mode — injects framework inspector in dev mode",
   "type": "module",
