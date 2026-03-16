@@ -126,6 +126,26 @@ function findUserComponent(hostFiber: Fiber): { name: string; fiber: Fiber; sour
 }
 
 /**
+ * Find the nearest named component (including builtins like Text, View).
+ */
+function findDirectComponent(hostFiber: Fiber): string | null {
+  let current: Fiber | null = hostFiber;
+  while (current) {
+    try {
+      // Check for string type (host components like "RCTText" → "Text")
+      if (typeof current.type === 'string') {
+        const name = current.type.replace(/^RCT/, '');
+        if (name) return name;
+      }
+      const name = getComponentName(current.type);
+      if (name) return name;
+    } catch { /* skip */ }
+    current = current.return;
+  }
+  return null;
+}
+
+/**
  * Collect ALL leaf host (native) fibers from the tree.
  */
 function collectAllHostFibers(fiber: Fiber | null, results: Fiber[]) {
@@ -210,44 +230,51 @@ export async function hitTestFromFiberTree(
   });
 
   // Extract text content from the tapped element
-  let elementLabel: string | null = null;
+  let textContent: string | null = null;
   const hitProps = best.fiber.memoizedProps;
   if (hitProps?.children && typeof hitProps.children === 'string') {
-    elementLabel = hitProps.children;
+    textContent = hitProps.children;
   }
 
-  // Walk up from the hit fiber to find the nearest user component
+  // Find direct component (e.g. Text, View) and user component (e.g. Card)
+  const directName = findDirectComponent(best.fiber);
   const userComp = findUserComponent(best.fiber);
-  if (!userComp) return null;
+  if (!userComp && !directName) return null;
 
-  // Resolve styles from the user component's props or the hit host fiber
+  // Use the direct component name as primary, user component as parent context
+  const componentName = directName ?? userComp?.name ?? 'Unknown';
+  const parentComponent = userComp && userComp.name !== directName ? userComp.name : null;
+
+  // Resolve styles — prefer the hit fiber's styles (what the user actually tapped)
   let resolvedStyle: Record<string, unknown> | null = null;
-  const styleProp = userComp.fiber.memoizedProps?.style ?? best.fiber.memoizedProps?.style;
+  const styleProp = best.fiber.memoizedProps?.style ?? userComp?.fiber.memoizedProps?.style;
   if (styleProp) {
     try {
       resolvedStyle = StyleSheet.flatten(styleProp) as Record<string, unknown>;
     } catch { /* ignore */ }
   }
 
-  // Measure the user component's own host fiber for layout
-  // (walk down from user comp to find its first host child)
+  // Measure layout
   let compLayout = best.layout;
-  let hostChild: Fiber | null = userComp.fiber;
-  while (hostChild && hostChild.tag !== HOST_COMPONENT) {
-    hostChild = hostChild.child;
-  }
-  if (hostChild && hostChild !== best.fiber) {
-    const layout = await measureNativeView(hostChild);
-    if (layout) compLayout = layout;
+  if (userComp) {
+    let hostChild: Fiber | null = userComp.fiber;
+    while (hostChild && hostChild.tag !== HOST_COMPONENT) {
+      hostChild = hostChild.child;
+    }
+    if (hostChild && hostChild !== best.fiber) {
+      const layout = await measureNativeView(hostChild);
+      if (layout) compLayout = layout;
+    }
   }
 
   return {
-    componentName: userComp.name,
-    elementLabel,
-    filePath: userComp.source?.fileName ?? null,
-    lineNumber: userComp.source?.lineNumber ?? null,
-    props: userComp.fiber.memoizedProps,
-    testID: (userComp.fiber.memoizedProps?.testID as string) ?? null,
+    componentName,
+    parentComponent,
+    textContent,
+    filePath: userComp?.source?.fileName ?? null,
+    lineNumber: userComp?.source?.lineNumber ?? null,
+    props: best.fiber.memoizedProps,
+    testID: (userComp?.fiber.memoizedProps?.testID as string) ?? null,
     layout: compLayout,
     style: resolvedStyle,
   };

@@ -263,17 +263,15 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
               <Text style={s.elName}>
                 {selected.componentName}
               </Text>
+              {selected.parentComponent && (
+                <Text style={s.elParent}>{'\u2039'} {selected.parentComponent}</Text>
+              )}
               {selected.testID && (
                 <View style={s.testIdPill}>
                   <Text style={s.testIdPillText}>{selected.testID}</Text>
                 </View>
               )}
             </View>
-            {selected.elementLabel && (
-              <Text style={s.elBreadcrumb} numberOfLines={1}>
-                {selected.componentName} {'\u203A'} {selected.elementLabel}
-              </Text>
-            )}
             {filePathShort && (
               <Pressable onPress={() => setShowFullPath(p => !p)}>
                 <Text style={s.elFilePath} numberOfLines={showFullPath ? undefined : 1}>
@@ -289,6 +287,13 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            {/* Text Content section — first, like web */}
+            {selected.textContent != null && (
+              <Section icon={'\u270F'} title="Text Content">
+                <Text style={s.textContentValue}>{selected.textContent}</Text>
+              </Section>
+            )}
+
             {/* Layout section */}
             {selected.layout && (
               <Section icon={'\u229E'} title="Layout">
@@ -332,7 +337,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
 
             {/* Fill & Stroke section */}
             {categories?.fillStroke && categories.fillStroke.length > 0 && (
-              <Section icon={'\u25C9'} title="Fill & Stroke" defaultOpen={false}>
+              <Section icon={'\u25C9'} title="Fill & Stroke">
                 {categories.fillStroke.map(([key, val]) => (
                   <View key={key} style={s.propRow}>
                     <Text style={s.propLabel} numberOfLines={1}>{key}</Text>
@@ -346,7 +351,7 @@ export function DesignerModeRN({ active, onClose, relayUrl, pollInterval = 2000 
             )}
 
             {/* Component section */}
-            <Section icon={'\u269B'} title="Component" defaultOpen={false}>
+            <Section icon={'\u269B'} title="Component">
               <PropRow label="Name" value={selected.componentName} mono={false} />
               {selected.testID && <PropRow label="Test ID" value={selected.testID} />}
               {selected.filePath && (
@@ -622,6 +627,10 @@ const s = StyleSheet.create({
     fontSize: 13,
     color: C.text,
   } as TextStyle,
+  elParent: {
+    fontSize: 11,
+    color: C.textTertiary,
+  } as TextStyle,
   testIdPill: {
     backgroundColor: C.accentDim,
     paddingHorizontal: 6,
@@ -633,11 +642,6 @@ const s = StyleSheet.create({
     color: C.accent,
     fontWeight: '500',
     fontFamily: 'Menlo',
-  } as TextStyle,
-  elBreadcrumb: {
-    fontSize: 10,
-    color: C.textTertiary,
-    marginTop: 3,
   } as TextStyle,
   elFilePath: {
     fontSize: 10,
@@ -736,6 +740,13 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+
+  // Text content
+  textContentValue: {
+    fontSize: 13,
+    color: C.text,
+    lineHeight: 18,
+  } as TextStyle,
 
   // Props JSON
   propsJson: {

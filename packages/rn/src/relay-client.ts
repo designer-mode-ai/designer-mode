@@ -12,7 +12,8 @@ export function buildAgentPrompt(
     `  Component : ${info.componentName}`,
   ];
 
-  if (info.elementLabel) lines.push(`  Element   : ${info.elementLabel}`);
+  if (info.parentComponent) lines.push(`  Parent    : ${info.parentComponent}`);
+  if (info.textContent) lines.push(`  Text      : ${info.textContent}`);
   if (info.filePath) lines.push(`  File      : ${info.filePath}${info.lineNumber ? `:${info.lineNumber}` : ''}`);
   if (info.testID) lines.push(`  Test ID   : ${info.testID}`);
 
