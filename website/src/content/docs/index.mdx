@@ -1,0 +1,82 @@
+---
+title: Designer Mode
+description: Close the gap between design and code
+template: splash
+hero:
+  title: Close the gap between design and code
+  tagline: No more mockup hand-offs, misinterpreted specs, or waiting days for a padding change. Designers drive the UI directly.
+  actions:
+    - text: Get Started
+      link: /quick-start/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/designer-mode-ai/designer-mode
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="1. Inspect">
+    Hover and click any element to see its component name, styles, design tokens, and props.
+  </Card>
+  <Card title="2. Tweak">
+    Edit styles, text, colors, and spacing inline. Changes appear live in the browser instantly.
+  </Card>
+  <Card title="3. Send">
+    Describe what you want or click Apply. The AI agent receives your edits and message with full context.
+  </Card>
+  <Card title="4. Ship">
+    The agent updates the source code. Hot reload kicks in. Repeat until it's perfect.
+  </Card>
+</CardGrid>
+
+---
+
+## Why Designer Mode?
+
+<CardGrid>
+  <Card title="Instant feedback loop" icon="rocket">
+    See changes in seconds, not days. No more waiting for a developer to interpret a Figma mockup and ship it.
+  </Card>
+  <Card title="Zero translation loss" icon="approve-check-circle">
+    Point at the exact element and say what you want. No ambiguity, no misinterpretation, no back-and-forth.
+  </Card>
+  <Card title="No code skills needed" icon="pencil">
+    Work visually in the browser. The AI agent handles finding the right file, component, and prop to change.
+  </Card>
+  <Card title="Works with the real product" icon="laptop">
+    Not a mockup or prototype. Tweak the actual running app with real data and real components.
+  </Card>
+  <Card title="AI does the heavy lifting" icon="star">
+    The agent figures out which file, which component, and which prop to change. Just describe what you want in plain language.
+  </Card>
+  <Card title="Designer opens the PR, dev reviews" icon="github">
+    The designer drives the changes and opens the pull request. Developers review the code — not interpret mockups.
+  </Card>
+</CardGrid>
+
+---
+
+## Works with everything
+
+<CardGrid>
+  <Card title="Any Framework" icon="puzzle">
+    React, Vue, Svelte, Angular, vanilla JS, and React Native.
+  </Card>
+  <Card title="Any AI Agent" icon="setting">
+    Claude Code, Cursor, GitHub Copilot, Codex, Aider, Gemini — via MCP or Skill.
+  </Card>
+  <Card title="Any Build Tool" icon="seti:config">
+    Vite plugin, Webpack plugin, or browser extension. Zero config.
+  </Card>
+  <Card title="Source Code Changes" icon="open-book">
+    Your agent edits actual source files — not runtime hacks. Hot reload shows changes instantly.
+  </Card>
+</CardGrid>
+
+<div class="install-command">
+  npm install designer-mode
+</div>
