@@ -19,7 +19,7 @@ switch (command) {
     break;
   case 'server': {
     const { createServer } = await import('../src/server.js');
-    const server = createServer();
+    const server = createServer({ streamRequestsToStdout: true });
     server.listen();
     break;
   }

@@ -7,15 +7,18 @@ description: Enter Designer Mode to listen for visual design change requests fro
 
 A browser panel lets designers inspect elements and request design changes. You apply those changes to the source code.
 
-## Steps
+The relay server prints each incoming request to its stdout as a block delimited by `=== DESIGNER MODE REQUEST ===` and `=== END ===`. You start it once in the background and watch its stdout for the next block — no polling, no restart between requests.
 
-1. Start the relay server in background:
-   ```bash
-   npx designer-mode server &
-   ```
-   Wait for it to confirm "Listening on http://localhost:3334".
+## Setup
 
-2. Tell the user:
+1. Start the relay server as a long-running background process and stream its stdout:
+   - **Claude Code** — run `npx designer-mode server` with `Bash` (`run_in_background: true`), then attach the `Monitor` tool to its shell so you receive each new stdout line as a notification.
+   - **Cursor** — run `npx designer-mode server` via the `shell` tool in background mode with `notify_on_output: "^=== END ===$"` so you're woken once each full request block has arrived.
+   - **Other agents with stdout streaming** — equivalent background + watch mechanism.
+
+2. Wait for confirmation `[designer-mode] Relay server listening on http://127.0.0.1:3334` on stderr.
+
+3. Tell the user:
    > Designer Mode is active. I'm now listening for design requests from the browser.
    >
    > To use it:
@@ -28,27 +31,28 @@ A browser panel lets designers inspect elements and request design changes. You 
    >
    > I'll keep listening until you tell me to stop.
 
-3. Run `npx designer-mode wait` — this blocks until a design request arrives and prints the structured prompt to stdout. Use a 10-minute timeout.
+## Loop
 
-4. Read the output — it contains the component name, file path, line number, current styles, any visual edits the designer made, and their message.
+Each time a new `=== DESIGNER MODE REQUEST === ... === END ===` block appears in the server's stdout:
 
-5. Read the relevant source files based on the file path provided.
+1. Read the block — it contains the component name, file path, line number, current styles, any inline edits the designer made, and their message.
 
-6. Apply the requested design changes to the source code.
+2. Read the relevant source files based on the file path.
 
-7. Send a response back to the panel:
+3. Apply the requested design changes to the source code.
+
+4. Send a response back to the panel:
    ```bash
    curl -s -X POST http://localhost:3334/api/response \
      -H "Content-Type: text/plain" \
      -d "Done — <brief summary of what was changed>"
    ```
 
-8. **IMMEDIATELY** go back to step 3 and run `npx designer-mode wait` again.
+5. Keep watching the server's stdout for the next block. **Do not kill or restart the server.**
 
 ## Critical Rule
 
-After every request: **apply changes → send response → designer-mode-wait**. Always.
-Never stop the loop unless the user explicitly says to stop or exit Designer Mode.
+After every request: **apply changes → send response → keep watching**. One server process for the whole session.
 
 ## Stopping
 

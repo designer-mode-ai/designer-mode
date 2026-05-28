@@ -2,7 +2,7 @@ export type RelayStatus = 'connected' | 'disconnected' | 'checking';
 
 export class RelayClient {
   private baseUrl: string;
-  private pollInterval: ReturnType<typeof setInterval> | null = null;
+  private polling = false;
   private onResponseCallback: ((r: string) => void) | null = null;
 
   constructor(baseUrl = 'http://localhost:3334') {
@@ -22,24 +22,43 @@ export class RelayClient {
     this.onResponseCallback = cb;
   }
 
+  /**
+   * Long-poll /api/poll one request at a time.
+   *
+   * Critical: do NOT use setInterval here. /api/poll holds open for up to 30s
+   * on the server side. setInterval(2s) would stack 15 pending connections,
+   * hit the browser's per-origin cap (~6), and starve concurrent /api/health
+   * checks — flipping the UI to "Not connected" while the relay is fine.
+   */
   private startPolling() {
-    if (this.pollInterval) return;
-    this.pollInterval = setInterval(async () => {
+    if (this.polling) return;
+    this.polling = true;
+    void this.pollLoop();
+  }
+
+  private async pollLoop() {
+    while (this.polling) {
       try {
         const r = await fetch(`${this.baseUrl}/api/poll`);
         if (r.status === 200) {
           const text = await r.text();
           if (text && this.onResponseCallback) {
             this.onResponseCallback(text);
-            this.stopPolling();
+            this.polling = false;
+            return;
           }
         }
-      } catch {}
-    }, 2000);
+        // 204 No Content = server timeout (30s), loop immediately for next long-poll.
+        // 200 with empty body = shouldn't happen but loop anyway.
+      } catch {
+        // Network error: brief delay before retry so we don't tight-loop on a downed server.
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    }
   }
 
   stopPolling() {
-    if (this.pollInterval) { clearInterval(this.pollInterval); this.pollInterval = null; }
+    this.polling = false;
   }
 
   async checkHealth(): Promise<RelayStatus> {

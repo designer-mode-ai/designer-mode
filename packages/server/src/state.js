@@ -3,6 +3,14 @@
  * Implements a simple in-memory queue with promise-based waiting.
  */
 
+/**
+ * Maximum messages held in the queue when no consumer is draining it.
+ * In streaming mode the agent consumes from stdout, not via /api/wait or MCP,
+ * so the queue would grow unbounded unless capped. A cap of 20 is comfortably
+ * above any realistic session backlog while bounding memory to ~40KB.
+ */
+const MAX_QUEUE = 20;
+
 export class RelayState {
   constructor() {
     /** @type {string[]} */
@@ -21,6 +29,7 @@ export class RelayState {
       const resolve = this.waitingResolvers.shift();
       resolve(body);
     } else {
+      if (this.messageQueue.length >= MAX_QUEUE) this.messageQueue.shift();
       this.messageQueue.push(body);
     }
   }

@@ -15,12 +15,13 @@ import http from 'http';
 import { RelayState } from './state.js';
 
 /**
- * @param {{ port?: number, host?: string, state?: RelayState }} options
+ * @param {{ port?: number, host?: string, state?: RelayState, streamRequestsToStdout?: boolean }} options
  */
 export function createServer(options = {}) {
   const port = options.port ?? parseInt(process.env.DESIGNER_PORT ?? '3334', 10);
   const host = options.host ?? process.env.DESIGNER_HOST ?? '127.0.0.1';
   const state = options.state ?? new RelayState();
+  const streamRequestsToStdout = options.streamRequestsToStdout ?? false;
 
   const server = http.createServer((req, res) => {
     // CORS headers — allow browser panel on any origin (localhost only in practice)
@@ -40,17 +41,24 @@ export function createServer(options = {}) {
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
+        if (streamRequestsToStdout) {
+          // Emit the prompt on stdout so an agent watching the process
+          // (Claude Code Monitor, Cursor `shell` notify_on_output, etc.)
+          // can react event-driven without polling /api/wait.
+          process.stdout.write(body.endsWith('\n') ? body : body + '\n');
+        }
+        // Always queue too — keeps /api/wait + MCP wait_for_design_request working.
         state.receiveMessage(body);
-        console.log(`[designer-mode] ← Request received (${body.length} bytes)`);
+        console.error(`[designer-mode] ← Request received (${body.length} bytes)`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
 
     } else if (req.method === 'GET' && url.pathname === '/api/wait') {
-      console.log(`[designer-mode] ⏳ Agent waiting...`);
+      console.error(`[designer-mode] ⏳ Agent waiting...`);
       state.waitForMessage(300000)
         .then(msg => {
-          console.log(`[designer-mode] → Delivered to agent`);
+          console.error(`[designer-mode] → Delivered to agent`);
           res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
           res.end(msg);
         })
@@ -64,7 +72,7 @@ export function createServer(options = {}) {
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
         state.sendResponse(body);
-        console.log(`[designer-mode] ← Agent response sent to panel`);
+        console.error(`[designer-mode] ← Agent response sent to panel`);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       });
@@ -100,7 +108,7 @@ export function createServer(options = {}) {
     listen() {
       return new Promise((resolve) => {
         server.listen(port, host, () => {
-          console.log(`[designer-mode] Relay server listening on http://${host}:${port}`);
+          console.error(`[designer-mode] Relay server listening on http://${host}:${port}`);
           resolve(undefined);
         });
       });

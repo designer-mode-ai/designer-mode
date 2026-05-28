@@ -82,7 +82,7 @@ Browser (Inspector Panel)
 Relay Server (localhost:3334)
     ↓
     ├─ MCP: agent calls wait_for_design_request tool
-    └─ Skill: agent runs npx designer-mode wait
+    └─ Skill: agent watches server's stdout (Monitor / notify_on_output)
 AI Agent
     → Reads prompt, applies code changes
     ↓

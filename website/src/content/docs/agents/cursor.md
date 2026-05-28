@@ -3,7 +3,7 @@ title: Cursor
 description: Using Designer Mode with Cursor
 ---
 
-Cursor uses the **Skill** approach — a skill file is installed in your project that teaches Cursor how to run the Designer Mode loop.
+Cursor uses the **Skill** approach — a skill file is installed in your project that teaches Cursor how to run the Designer Mode loop using its `shell` tool with `notify_on_output`.
 
 ## Setup
 
@@ -20,17 +20,18 @@ This installs `.agents/skills/designer-mode/SKILL.md` in your project.
 3. Tell Cursor: **"enter design mode"** or use `/designer-mode`
 
 Cursor will:
-1. Start the relay server
-2. Poll for design requests
+1. Start the relay server in the background via `shell` (background mode) with `notify_on_output: "^=== END ===$"`
+2. Receive a notification each time the server prints a full design request block
 3. Apply code changes
-4. Send responses back to the panel
-5. Keep polling for more requests
+4. Send the response back via `curl POST /api/response`
+5. Continue watching the same background process for the next request
 
 ## How It Works
 
-The skill file contains step-by-step instructions that Cursor follows:
-- Run `npx designer-mode wait` to long-poll for requests
-- Parse the structured output (component name, file path, styles, user message)
+The skill file contains the step-by-step instructions Cursor follows:
+- Run `npx designer-mode server` in the `shell` tool's background mode
+- Set `notify_on_output` to the request-block delimiter (`^=== END ===$`) so each completed request wakes Cursor
+- Parse the structured prompt (component name, file path, styles, designer message)
 - Read the source file and apply changes
 - Send the response via `curl POST /api/response`
-- Loop back to waiting
+- Keep the same server process running for the entire session

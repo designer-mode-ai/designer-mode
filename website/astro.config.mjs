@@ -7,11 +7,7 @@ export default defineConfig({
     starlight({
       title: 'Designer Mode',
       description: 'AI-powered UI inspector for any JavaScript framework',
-      logo: {
-        light: './src/assets/logo-light.svg',
-        dark: './src/assets/logo-dark.svg',
-        replacesTitle: false,
-      },
+      favicon: '/logo.png',
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/designer-mode-ai/designer-mode' },
       ],

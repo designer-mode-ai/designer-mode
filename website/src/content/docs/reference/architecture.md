@@ -61,5 +61,5 @@ The relay is intentionally simple: it's a pass-through that doesn't interpret me
 
 Agents connect via:
 - **MCP** — Model Context Protocol tools (`wait_for_design_request`, `send_design_response`)
-- **CLI** — `designer-mode-wait` command that long-polls and prints the prompt
-- **HTTP** — Direct API calls to the relay endpoints
+- **Skill (stdout streaming)** — the relay server prints each request to its stdout; the agent watches via Claude Code's `Monitor`, Cursor's `shell` with `notify_on_output`, or equivalent. Responses go via `curl POST /api/response`.
+- **HTTP** — Direct API calls to the relay endpoints (long-poll `/api/wait` for the next message, `POST /api/response` to reply)

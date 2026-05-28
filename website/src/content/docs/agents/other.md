@@ -8,7 +8,7 @@ Designer Mode works with any agent through two approaches:
 - **MCP** — for agents that support Model Context Protocol
 - **Skill** — for any agent that can run shell commands
 
-## Skill Setup (Most Compatible)
+## Skill Setup
 
 ```bash
 npx designer-mode setup
@@ -20,15 +20,14 @@ This installs the skill file into standard locations:
 
 Then tell your agent: **"enter design mode"**
 
+The skill instructs the agent to start the relay server in the background and stream its stdout, using whichever tool its harness provides — Claude Code's `Monitor`, Cursor's `shell` with `notify_on_output`, or an equivalent. The agent then watches for `=== DESIGNER MODE REQUEST === ... === END ===` blocks and curls a response back for each one.
+
 ### Supported Agents
 
 | Agent | How to activate |
 |---|---|
 | **Claude Code** | "enter design mode" or `/designer-mode` |
 | **Cursor** | "enter design mode" or `/designer-mode` |
-| **Codex** | "enter design mode" |
-| **Gemini CLI** | "enter design mode" |
-| **Aider** | "enter design mode" |
 
 ## MCP Setup
 
@@ -51,7 +50,7 @@ The MCP server exposes:
 
 ## Manual Integration
 
-For agents not listed above, the loop is simple:
+For agents whose harness doesn't expose a stdout-subscription primitive, the loop is simple:
 
 ### 1. Start the relay
 
@@ -59,13 +58,16 @@ For agents not listed above, the loop is simple:
 npx designer-mode server
 ```
 
-### 2. Poll for requests
+The server prints each incoming design request to its stdout as a block delimited by `=== DESIGNER MODE REQUEST ===` and `=== END ===`.
+
+### 2. Read a request
+
+Either stream stdout (preferred — agent reacts as each block arrives) or long-poll the HTTP API for the next queued message:
 
 ```bash
-npx designer-mode wait
+# Alternative: HTTP long-poll, blocks up to 300s and returns the next prompt
+curl -s http://localhost:3334/api/wait
 ```
-
-This blocks until a request arrives, then prints the full prompt (component info, styles, user message).
 
 ### 3. Apply changes and respond
 
@@ -77,7 +79,7 @@ curl -X POST http://localhost:3334/api/response \
 
 ### 4. Loop
 
-Repeat steps 2-3 for each request.
+Go back to step 2 for the next request.
 
 ## API Reference
 

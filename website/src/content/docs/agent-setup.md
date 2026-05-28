@@ -15,9 +15,9 @@ The **MCP (Model Context Protocol)** approach uses tool calls — your agent cal
 
 ### Skill
 
-The **Skill** approach installs a skill file into your project that teaches the agent to run `npx designer-mode wait` in a loop and respond via curl. It works with any agent that can run shell commands.
+The **Skill** approach installs a skill file into your project that teaches the agent to launch the relay server in the background, stream its stdout for incoming design requests, and respond via curl. Works with any agent whose harness exposes background processes and stdout subscription (Claude Code's `Monitor`, Cursor's `shell` with `notify_on_output`, etc.).
 
-**Best for:** Cursor, Codex, Gemini CLI, Aider, and agents without MCP support.
+**Best for:** Cursor and any MCP-less agent with stdout streaming.
 
 ---
 
@@ -70,12 +70,12 @@ This copies the Designer Mode skill into your project:
 Tell your agent: **"enter design mode"** or use the `/designer-mode` slash command.
 
 The agent will:
-1. Start the relay server (`npx designer-mode server`)
-2. Poll for requests (`npx designer-mode wait`)
-3. Read the structured output (component info, file path, styles, message)
+1. Start the relay server in the background (`npx designer-mode server`)
+2. Stream the server's stdout — using `Monitor` (Claude Code), `notify_on_output` (Cursor), or an equivalent — to receive each design request block as it arrives
+3. Read the structured prompt (component info, file path, styles, message)
 4. Apply code changes
 5. Send response via `curl -X POST http://localhost:3334/api/response`
-6. Loop back to step 2
+6. Keep watching for the next request — one server process for the whole session
 
 ---
 
@@ -98,7 +98,7 @@ Browser (Inspector Panel)
 Relay Server (localhost:3334)
     ↓
     ├─ MCP: agent calls wait_for_design_request tool
-    └─ Skill: agent runs npx designer-mode wait
+    └─ Skill: agent watches server's stdout (Monitor / notify_on_output)
 
 Agent reads prompt, applies code changes
 

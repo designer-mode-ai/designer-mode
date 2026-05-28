@@ -12,24 +12,155 @@
   --sl-color-accent-high: #024c85;
 }
 
-/* Hero section */
-.hero {
-  text-align: center;
-  padding: 4rem 1rem 3rem;
+/* Header brand — tight monochrome wordmark, not the default blue link */
+.site-title {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+  color: var(--sl-color-white);
 }
 
-.hero h1 {
-  font-size: 3rem;
+:root[data-theme='light'] .site-title {
+  color: #0a1628;
+}
+
+/* Strip the default content-panel padding so the hero gradient meets the header */
+[data-has-hero] .main-pane .content-panel:first-of-type {
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+[data-has-hero] .main-pane .content-panel:first-of-type > .sl-container {
+  margin-inline: 0;
+  max-width: none;
+}
+
+/* Hero section */
+[data-has-hero] .hero {
+  padding: 4rem 1rem 3rem;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(ellipse 70% 60% at 50% 0%, rgba(3, 125, 214, 0.20) 0%, transparent 70%);
+}
+
+:root[data-theme='light'] [data-has-hero] .hero {
+  background: radial-gradient(ellipse 70% 50% at 50% 10%, rgba(3, 125, 214, 0.10) 0%, transparent 70%);
+}
+
+/* Subtle dot pattern overlay */
+[data-has-hero] .hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+:root[data-theme='light'] [data-has-hero] .hero::before {
+  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+}
+
+/* Collapse Starlight's 7fr/4fr grid to a single centered column.
+   Without a hero image, the right column is empty and pushes content off-center. */
+[data-has-hero] .hero {
+  grid-template-columns: 1fr !important;
+}
+
+[data-has-hero] .hero > .sl-flex,
+[data-has-hero] .hero .stack,
+[data-has-hero] .hero .copy,
+[data-has-hero] .hero .actions {
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+}
+
+/* Hero logo — bigger, centered, with glow + gentle float */
+.hero-logo {
+  display: block;
+  width: 168px;
+  height: 168px;
+  margin: 0 auto 1.25rem;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 32px rgba(3, 125, 214, 0.35))
+          drop-shadow(0 0 120px rgba(3, 125, 214, 0.25));
+  animation: hero-float 6s ease-in-out infinite;
+}
+
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-logo { animation: none; }
+}
+
+/* Hero title — big, bold, high-contrast */
+[data-has-hero] .hero h1 {
+  font-size: clamp(2.75rem, 6vw, 5rem);
   font-weight: 800;
-  line-height: 1.1;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  margin: 0 0 1.25rem;
+  color: var(--sl-color-white);
+}
+
+:root[data-theme='light'] [data-has-hero] .hero h1 {
+  color: #0a1628;
+}
+
+/* Hero tagline container */
+[data-has-hero] .hero .tagline {
+  max-width: 620px;
+  margin: 0 auto 2rem;
+  text-align: center;
+}
+
+/* Accent line — uppercase, colored, spaced */
+.hero-accent {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  color: var(--sl-color-accent);
   margin-bottom: 1rem;
 }
 
-.hero .tagline {
-  font-size: 1.25rem;
+/* Description — lighter, regular weight */
+.hero-description {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 400;
   color: var(--sl-color-gray-3);
-  max-width: 600px;
-  margin: 0 auto 2rem;
+  line-height: 1.6;
+}
+
+:root[data-theme='light'] .hero-description {
+  color: #475569;
+}
+
+/* CTA buttons — pill style, breathing room */
+[data-has-hero] .hero .actions a {
+  border-radius: 999px;
+  padding: 0.85rem 1.75rem;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+[data-has-hero] .hero .actions a[data-variant='primary'] {
+  box-shadow: 0 8px 24px rgba(3, 125, 214, 0.35);
+}
+
+[data-has-hero] .hero .actions a[data-variant='primary']:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(3, 125, 214, 0.45);
 }
 
 /* Feature cards on landing page */
